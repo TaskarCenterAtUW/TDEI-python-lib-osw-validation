@@ -8,4 +8,6 @@ SCHEMA_DIR = os.path.join(CURRENT_DIR, 'schema')
 
 if __name__ == '__main__':
     validator = OSWValidation(schema_dir=SCHEMA_DIR)
-    validator.validate()
+    is_valid = validator.validate()
+    if is_valid is False:
+        print(validator.errors)

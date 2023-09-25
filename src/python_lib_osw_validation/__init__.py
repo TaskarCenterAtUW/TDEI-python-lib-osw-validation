@@ -10,6 +10,7 @@ class OSWValidation:
         self.schema_dir = schema_dir
         self.schema = self.load_osw_schema(Path(self.schema_dir, 'opensidewalks.schema.json'))
         self.region_id = 'wa.microsoft'
+        self.errors = None
 
     def load_osw_schema(self, schema_path: str) -> Dict[str, Any]:
         """Load OSW Schema"""
@@ -32,11 +33,12 @@ class OSWValidation:
         for error in errors:
             error_count += 1
             # Format and store in file for further review
-            print(error)
+            self.errors = error
 
         return error_count == 0
 
     def validate(self) -> None:
+        self.errors = None
         # Validate edges
         is_valid = self.validate_osw_errors(
             self.load_osw_file(Path(self.schema_dir, f"{self.region_id}.graph.edges.OSW.geojson")))
