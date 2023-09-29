@@ -13,11 +13,11 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 setup(
-    name='python_ms_core',
+    name='python_lib_osw_validation',
     version=version,
     author='Sujata Misra',
     author_email='sujatam@gaussiansolutions.com',
-    description='OWS Validation',
+    description='Python library for OSW validation',
     long_description=long_description,
     project_urls={
         'Documentation': 'https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/blob/main/README.md',
