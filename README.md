@@ -65,17 +65,30 @@ test_invalid_missing_files_directory (test_extracted_data_validator.TestExtracte
 test_invalid_missing_required_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_valid_directory_structure (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_edges_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_edges_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_edges_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_missing_files_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_missing_files_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_nodes_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_nodes_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_nodes_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_points_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_points_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_points_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_valid_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_valid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_valid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_extract_invalid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
 
 ----------------------------------------------------------------------
-Ran 13 tests in 82.787s
+Ran 25 tests in 85.914s
 
 OK
+
 ```

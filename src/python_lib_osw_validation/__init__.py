@@ -11,17 +11,27 @@ SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
 class OSWValidation:
     schema_dir = os.path.join(SCHEMA_PATH, 'opensidewalks.schema.json')
 
-    def __init__(self, zipfile_path: str):
+    def __init__(self, zipfile_path: str, schema_file_path=None):
         self.zipfile_path = zipfile_path
         self.extracted_dir = None
-        self.schema = self.load_osw_schema(OSWValidation.schema_dir)
+        if schema_file_path is None:
+            self.schema = self.load_osw_schema(OSWValidation.schema_dir)
+        else:
+            self.schema = self.load_osw_schema(schema_file_path)
+
         self.error = None
 
     def load_osw_schema(self, schema_path: str) -> Dict[str, Any]:
         '''Load OSW Schema'''
-        with open(schema_path, 'r') as file:
-            schema = json.load(file)
-        return schema
+        try:
+            with open(schema_path, 'r') as file:
+                schema = json.load(file)
+            return schema
+        except Exception as e:
+            self.error = e
+            raise Exception(f'Invalid or missing schema file: {e}')
+
+
 
     def validate(self) -> bool:
         self.error = None
