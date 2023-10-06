@@ -25,14 +25,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_valid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.valid_zipfile)
         result = validation.validate()
-        self.assertTrue(result)
-        self.assertIsNone(validation.error)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.error)
 
     def test_valid_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.valid_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertTrue(result)
-        self.assertIsNone(validation.error)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.error)
 
     def test_valid_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):
@@ -42,14 +42,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_invalid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.invalid_zipfile)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_invalid_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.invalid_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_invalid_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):
@@ -60,14 +60,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_nodes_invalid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.nodes_invalid_zipfile)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_nodes_invalid_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.nodes_invalid_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_nodes_invalid_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):
@@ -78,14 +78,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_edges_invalid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.edges_invalid_zipfile)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_edges_invalid_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.edges_invalid_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_edges_invalid_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):
@@ -96,14 +96,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_points_invalid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.points_invalid_zipfile)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_points_invalid_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.points_invalid_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_points_invalid_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):
@@ -114,14 +114,14 @@ class TestOSWValidation(unittest.TestCase):
     def test_missing_files_inside_zipfile(self):
         validation = OSWValidation(zipfile_path=self.missing_files_zipfile)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_missing_files_inside_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.missing_files_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result)
-        self.assertIsNotNone(validation.error)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.error)
 
     def test_missing_files_inside_zipfile_with_invalid_schema(self):
         with self.assertRaises(Exception):

@@ -11,26 +11,26 @@ SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema.json')
 
 def valid_test_with_provided_schema():
     validator = OSWValidation(zipfile_path=VALID_ZIP_FILE, schema_file_path=SCHEMA_FILE_PATH)
-    is_valid = validator.validate()
-    print(f'Valid Test With Provided Schema: {"Passed" if is_valid else "Failed"}')
+    validation = validator.validate()
+    print(f'Valid Test With Provided Schema: {"Passed" if validation.is_valid else "Failed"}')
 
 
 def valid_test_without_provided_schema():
     validator = OSWValidation(zipfile_path=VALID_ZIP_FILE)
-    is_valid = validator.validate()
-    print(f'Valid Test Without Schema: {"Passed" if is_valid else "Failed"}')
+    validation = validator.validate()
+    print(f'Valid Test Without Schema: {"Passed" if validation.is_valid else "Failed"}')
 
 
 def invalid_test_with_provided_schema():
     validator = OSWValidation(zipfile_path=INVALID_ZIP_FILE, schema_file_path=SCHEMA_FILE_PATH)
-    is_valid = validator.validate()
-    print(f'Invalid Test With Provided Schema: {"Failed" if is_valid else "Passed"}')
+    validation = validator.validate()
+    print(f'Invalid Test With Provided Schema: {"Failed" if validation.is_valid else "Passed"}')
 
 
 def invalid_test_without_provided_schema():
     validator = OSWValidation(zipfile_path=INVALID_ZIP_FILE)
-    is_valid = validator.validate()
-    print(f'Invalid Test Without Schema: {"Failed" if is_valid else "Passed"}')
+    validation = validator.validate()
+    print(f'Invalid Test Without Schema: {"Failed" if validation.is_valid else "Passed"}')
 
 
 if __name__ == '__main__':
