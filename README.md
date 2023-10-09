@@ -47,7 +47,7 @@ folder.
 
 - To execute the code coverage, please follow the commands:
 
-  `coverage run --source=src/python_lib_osw_validation -m unittest discover -v tests/unit_tests`
+  `coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests`
 
   `coverage html` // Can be run after 1st command
 
@@ -59,7 +59,7 @@ folder.
 
 ```shell
 
->  coverage run --source=src/python_lib_osw_validation -m unittest discover -v tests/unit_tests
+>  coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests
 test_invalid_empty_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_invalid_missing_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_invalid_missing_required_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok

@@ -2,7 +2,7 @@ import unittest
 import os
 import tempfile
 import shutil
-from src.python_lib_osw_validation.extracted_data_validator import ExtractedDataValidator
+from src.python_osw_validation.extracted_data_validator import ExtractedDataValidator
 
 
 class TestExtractedDataValidator(unittest.TestCase):

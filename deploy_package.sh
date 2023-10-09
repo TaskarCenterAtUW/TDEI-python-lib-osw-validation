@@ -2,7 +2,7 @@
 
 # VARS
 DT=$(date +%FT%T)
-PROJ_NAME="python-lib-osw-validation"
+PROJ_NAME="python-osw-validation"
 BUILD_FOLDER="build"
 BUILD_TARGET="$BUILD_FOLDER/$PROJ_NAME/python"
 

@@ -13,7 +13,7 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 setup(
-    name='python_lib_osw_validation',
+    name='python_osw_validation',
     version=version,
     author='Sujata Misra',
     author_email='sujatam@gaussiansolutions.com',

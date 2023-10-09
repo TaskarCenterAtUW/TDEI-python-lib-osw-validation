@@ -1,11 +1,11 @@
 import os
 import unittest
-from src.python_lib_osw_validation import OSWValidation
+from src.python_osw_validation import OSWValidation
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ASSETS_PATH = os.path.join(PARENT_DIR, 'assets')
-SCHEMA_DIR = os.path.join(SRC_DIR, 'src/python_lib_osw_validation/schema')
+SCHEMA_DIR = os.path.join(SRC_DIR, 'src/python_osw_validation/schema')
 SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema.json')
 INVALID_SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalk.schema.json')
 

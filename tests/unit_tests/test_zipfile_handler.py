@@ -1,6 +1,6 @@
 import unittest
 import os
-from src.python_lib_osw_validation.zipfile_handler import ZipFileHandler
+from src.python_osw_validation.zipfile_handler import ZipFileHandler
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_PATH = os.path.join(PARENT_DIR, 'assets')

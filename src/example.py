@@ -1,11 +1,11 @@
 import os
-from python_lib_osw_validation import OSWValidation
+from python_osw_validation import OSWValidation
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(PARENT_DIR, 'tests/assets')
 VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid.zip')
 INVALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'invalid.zip')
-SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_lib_osw_validation/schema')
+SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_osw_validation/schema')
 SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema.json')
 
 
