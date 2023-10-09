@@ -18,19 +18,19 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 
 ## Starting a new project with template
 
-- Add `python-lib-osw-validation` package as dependency in your `requirements.txt`
-- or `pip install python-lib-osw-validation`
+- Add `python-osw-validation` package as dependency in your `requirements.txt`
+- or `pip install python-osw-validation`
 - Start using the packages in your code.
 
 ## Initialize and Configuration
 
 ```python
-from python_lib_osw_validation import OSWValidation
+from python_osw_validation import OSWValidation
 
 validator = OSWValidation(zipfile_path='<Zip file path>')
 result = validator.validate()
 print(result.is_valid)
-print(result.error)
+print(result.errors)
 
 ```
 
@@ -67,12 +67,17 @@ test_valid_directory_structure (test_extracted_data_validator.TestExtractedDataV
 test_edges_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
+test_extra_field_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_id_missing_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_invalid_geometry_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
+test_missing_identifier_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_no_entity_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_nodes_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_nodes_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_nodes_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
@@ -82,13 +87,13 @@ test_points_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) 
 test_valid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_valid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_valid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
+test_wrong_datatypes_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_extract_invalid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
 
 ----------------------------------------------------------------------
-Ran 25 tests in 85.914s
+Ran 31 tests in 193.358s
 
 OK
-
 ```

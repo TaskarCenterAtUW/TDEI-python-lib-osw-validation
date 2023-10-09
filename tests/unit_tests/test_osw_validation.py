@@ -19,6 +19,12 @@ class TestOSWValidation(unittest.TestCase):
         self.edges_invalid_zipfile = os.path.join(ASSETS_PATH, 'edges_invalid.zip')
         self.points_invalid_zipfile = os.path.join(ASSETS_PATH, 'points_invalid.zip')
         self.missing_files_zipfile = os.path.join(ASSETS_PATH, 'invalid_files.zip')
+        self.id_missing_zipfile = os.path.join(ASSETS_PATH, '_id_missing.zip')
+        self.extra_field_zipfile = os.path.join(ASSETS_PATH, 'extra_field.zip')
+        self.invalid_geometry_zipfile = os.path.join(ASSETS_PATH, 'invalid_geometry.zip')
+        self.missing_identifier_zipfile = os.path.join(ASSETS_PATH, 'missing_identifier.zip')
+        self.no_entity_zipfile = os.path.join(ASSETS_PATH, 'no_entity.zip')
+        self.wrong_datatypes_zipfile = os.path.join(ASSETS_PATH, 'wrong_datatype.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
 
@@ -129,6 +135,42 @@ class TestOSWValidation(unittest.TestCase):
                                    schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
         self.assertTrue(len(result.errors) > 0)
+
+    def test_id_missing_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.id_missing_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_extra_field_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.extra_field_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_invalid_geometry_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.invalid_geometry_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_missing_identifier_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.missing_identifier_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_no_entity_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.no_entity_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_wrong_datatypes_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.wrong_datatypes_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
 
 
 if __name__ == '__main__':
