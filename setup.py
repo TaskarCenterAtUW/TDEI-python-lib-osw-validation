@@ -35,4 +35,7 @@ setup(
     ],
     python_requires='>=3.10',
     package_dir={'': 'src'},
+    package_data={
+        'python_osw_validation': ['schema/*'],
+    },
 )
