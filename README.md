@@ -64,21 +64,6 @@ test_invalid_empty_directory (test_extracted_data_validator.TestExtractedDataVal
 test_invalid_missing_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_invalid_missing_required_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_valid_directory_structure (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_wrong_datatypes_zipfile (test_osw_validation.TestOSWValidation) ... ["Validation error: {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [-122.1361808, 47.6403535]}, 'properties': {'amenity': 'amenity', '_id': '4293205373'}} is not valid under any of the given schemas"]
-ok
-test_extract_invalid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
-test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
-test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
-
-----------------------------------------------------------------------
-Ran 8 tests in 0.847s
-
-OK
-(venv) anujkumar@Anujs-MacBook-Pro TDEI-python-lib-osw-validation % coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests
-test_invalid_empty_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_invalid_missing_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_invalid_missing_required_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_valid_directory_structure (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_edges_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
@@ -111,5 +96,4 @@ test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
 Ran 31 tests in 193.358s
 
 OK
-
 ```
