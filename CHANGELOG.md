@@ -6,3 +6,6 @@
 ### 0.0.2
 - Updated package Unit test cases.
 - Updated README file
+
+### 0.0.3
+- Added schema file to package
