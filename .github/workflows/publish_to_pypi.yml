@@ -32,7 +32,7 @@ jobs:
 
       - name: Fetch remote package version
         run: |
-          packageRemoteVersion=$(python -c "exec(\"import pkg_resources\\ntry:  print(pkg_resources.get_distribution('python-lib-osw-validation').version)\\nexcept pkg_resources.DistributionNotFound:  print('0.0.0');\")")
+          packageRemoteVersion=$(python -c "exec(\"import pkg_resources\\ntry:  print(pkg_resources.get_distribution('python-osw-validation').version)\\nexcept pkg_resources.DistributionNotFound:  print('0.0.0');\")")
           echo "remoteVersion=$packageRemoteVersion" >> $GITHUB_ENV
 
       - name: Printing local and remote versions
