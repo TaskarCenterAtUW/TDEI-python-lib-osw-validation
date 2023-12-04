@@ -35,7 +35,7 @@ class TestExtractedDataValidator(unittest.TestCase):
 
     def create_invalid_missing_required_files_directory(self):
         # Create a directory with three geojson files, but not all required ones
-        invalid_files = ['edges.geojson', 'invalid.geojson', 'nodes.geojson']
+        invalid_files = ['edges.geojson', 'invalid.geojson', 'points.geojson']
         for file in invalid_files:
             open(os.path.join(self.invalid_missing_required_files_dir, file), 'w').close()
 

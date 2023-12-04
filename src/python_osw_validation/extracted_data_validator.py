@@ -14,20 +14,24 @@ class ExtractedDataValidator:
             return False
 
         geojson_files = glob.glob(os.path.join(self.extracted_dir, '*.geojson'))
-        if len(geojson_files) < 3:
+        if len(geojson_files) < 2:
             self.error = 'There are not enough .geojson files in the folder.'
             return False
 
+        edges_present = False
+        nodes_present = False
         for filename in geojson_files:
             base_name = os.path.basename(filename)
             if 'edges' in base_name and base_name.endswith('.geojson'):
                 self.files.append(filename)
+                edges_present = True
             elif 'nodes' in base_name and base_name.endswith('.geojson'):
                 self.files.append(filename)
+                nodes_present = True
             elif 'points' in base_name and base_name.endswith('.geojson'):
                 self.files.append(filename)
 
-        if len(self.files) != 3:
+        if not edges_present or not nodes_present:
             self.error = 'Missing one or more required .geojson files.'
             return False
 
