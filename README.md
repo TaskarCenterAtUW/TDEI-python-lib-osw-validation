@@ -11,8 +11,8 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 ## What this package does?
 
 - It unzip the provided zip files
-- Check for nodes, edges and points geojson files inside the unzipped folder
-- Validate each file against schema, schema can be found here
+- Check for the required nodes and edges geojson files inside the unzipped folder
+- Validate each file (nodes, edges and points) against schema, schema can be found here
 - Return true or false according to validation
 - you can check the error if it returned false.
 
@@ -73,6 +73,9 @@ test_invalid_geometry_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
+test_minimal_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_minimal_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_minimal_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_files_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
@@ -93,7 +96,7 @@ test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
 
 ----------------------------------------------------------------------
-Ran 31 tests in 193.358s
+Ran 34 tests in 121.220s
 
 OK
 ```

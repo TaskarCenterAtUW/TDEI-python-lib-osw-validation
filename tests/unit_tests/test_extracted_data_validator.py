@@ -6,62 +6,63 @@ from src.python_osw_validation.extracted_data_validator import ExtractedDataVali
 
 
 class TestExtractedDataValidator(unittest.TestCase):
-
     def setUp(self):
-        self.valid_dir = tempfile.mkdtemp()
-        self.invalid_empty_dir = tempfile.mkdtemp()
-        self.invalid_missing_files_dir = tempfile.mkdtemp()
-        self.invalid_missing_required_files_dir = tempfile.mkdtemp()
+        # Create a temporary directory for testing
+        self.test_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.valid_dir)
-        shutil.rmtree(self.invalid_empty_dir)
-        shutil.rmtree(self.invalid_missing_files_dir)
-        shutil.rmtree(self.invalid_missing_required_files_dir)
+        # Remove the temporary directory and its contents
+        shutil.rmtree(self.test_dir)
 
-    def create_valid_directory_structure(self):
-        # Create a valid directory structure with 3 geojson files
-        valid_files = ['edges.geojson', 'nodes.geojson', 'points.geojson']
-        for file in valid_files:
-            open(os.path.join(self.valid_dir, file), 'w').close()
+    def create_files(self, files):
+        for file in files:
+            with open(os.path.join(self.test_dir, file), 'w') as f:
+                f.write('Test content')
 
-    def create_invalid_empty_directory(self):
-        # Create an empty directory
-        pass
-
-    def create_invalid_missing_files_directory(self):
-        # Create a directory with only one geojson file
-        open(os.path.join(self.invalid_missing_files_dir, 'edges.geojson'), 'w').close()
-
-    def create_invalid_missing_required_files_directory(self):
-        # Create a directory with three geojson files, but not all required ones
-        invalid_files = ['edges.geojson', 'invalid.geojson', 'nodes.geojson']
-        for file in invalid_files:
-            open(os.path.join(self.invalid_missing_required_files_dir, file), 'w').close()
-
-    def test_valid_directory_structure(self):
-        self.create_valid_directory_structure()
-        validator = ExtractedDataValidator(self.valid_dir)
+    def test_valid_data_at_root(self):
+        # Test when required files are at the root level
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['a.nodes.geojson', 'a.edges.geojson', 'a.points.geojson'])
         self.assertTrue(validator.is_valid())
-        self.assertEqual(len(validator.files), 3)
 
-    def test_invalid_empty_directory(self):
-        self.create_invalid_empty_directory()
-        validator = ExtractedDataValidator(self.invalid_empty_dir)
-        self.assertFalse(validator.is_valid())
-        self.assertEqual(validator.error, 'Folder is empty or does not exist.')
+    def test_valid_data_inside_folder(self):
+        # Test when required files are inside a folder
+        validator = ExtractedDataValidator(self.test_dir)
+        os.makedirs(os.path.join(self.test_dir, 'abc'))
+        self.create_files(['abc/a.nodes.geojson', 'abc/a.edges.geojson', 'abc/a.points.geojson'])
+        self.assertTrue(validator.is_valid())
 
-    def test_invalid_missing_files_directory(self):
-        self.create_invalid_missing_files_directory()
-        validator = ExtractedDataValidator(self.invalid_missing_files_dir)
+    def test_missing_required_files(self):
+        # Test when one of the required files is missing
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['a.nodes.geojson', 'a.points.geojson'])
         self.assertFalse(validator.is_valid())
-        self.assertEqual(validator.error, 'There are not enough .geojson files in the folder.')
+        self.assertEqual(validator.error, 'Missing required .geojson files: edges.')
 
-    def test_invalid_missing_required_files_directory(self):
-        self.create_invalid_missing_required_files_directory()
-        validator = ExtractedDataValidator(self.invalid_missing_required_files_dir)
+    def test_missing_optional_file(self):
+        # Test when optional file is missing
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['a.nodes.geojson', 'a.edges.geojson'])
+        self.assertTrue(validator.is_valid())
+
+    def test_no_geojson_files(self):
+        # Test when no .geojson files are present
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['some.txt', 'another.txt'])
         self.assertFalse(validator.is_valid())
-        self.assertEqual(validator.error, 'Missing one or more required .geojson files.')
+        self.assertEqual(validator.error, 'No .geojson files found in the specified directory or its subdirectories.')
+
+    def test_invalid_directory(self):
+        # Test when the specified directory does not exist
+        validator = ExtractedDataValidator('nonexistent_directory')
+        self.assertFalse(validator.is_valid())
+        self.assertEqual(validator.error, 'Directory does not exist.')
+
+    def test_empty_directory(self):
+        # Test when the specified directory is empty
+        validator = ExtractedDataValidator(self.test_dir)
+        self.assertFalse(validator.is_valid())
+        self.assertEqual(validator.error, 'No .geojson files found in the specified directory or its subdirectories.')
 
 
 if __name__ == '__main__':

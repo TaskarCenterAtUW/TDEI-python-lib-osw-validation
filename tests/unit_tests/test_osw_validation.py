@@ -14,6 +14,7 @@ class TestOSWValidation(unittest.TestCase):
 
     def setUp(self):
         self.valid_zipfile = os.path.join(ASSETS_PATH, 'valid.zip')
+        self.minimal_zipfile = os.path.join(ASSETS_PATH, 'minimal.zip')
         self.invalid_zipfile = os.path.join(ASSETS_PATH, 'invalid.zip')
         self.nodes_invalid_zipfile = os.path.join(ASSETS_PATH, 'nodes_invalid.zip')
         self.edges_invalid_zipfile = os.path.join(ASSETS_PATH, 'edges_invalid.zip')
@@ -43,6 +44,23 @@ class TestOSWValidation(unittest.TestCase):
     def test_valid_zipfile_with_invalid_schema(self):
 
         validation = OSWValidation(zipfile_path=self.valid_zipfile, schema_file_path=self.invalid_schema_file_path)
+        result = validation.validate()
+        self.assertTrue(len(result.errors) > 0)
+
+    def test_minimal_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.minimal_zipfile)
+        result = validation.validate()
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_minimal_zipfile_with_schema(self):
+        validation = OSWValidation(zipfile_path=self.minimal_zipfile, schema_file_path=self.schema_file_path)
+        result = validation.validate()
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_minimal_zipfile_with_invalid_schema(self):
+        validation = OSWValidation(zipfile_path=self.minimal_zipfile, schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
         self.assertTrue(len(result.errors) > 0)
 
