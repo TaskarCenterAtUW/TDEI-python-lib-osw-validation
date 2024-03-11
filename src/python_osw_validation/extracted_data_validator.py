@@ -25,8 +25,8 @@ class ExtractedDataValidator:
             self.error = 'No .geojson files found in the specified directory or its subdirectories.'
             return False
 
-        required_files = {'nodes', 'edges'}
-        optional_files = {'points'}
+        required_files = {}
+        optional_files = {'nodes', 'edges', 'points', 'lines', 'zones', 'polygons'}
         for filename in geojson_files:
             base_name = os.path.basename(filename)
             for required_file in required_files:
