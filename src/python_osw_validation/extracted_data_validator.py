@@ -6,6 +6,7 @@ class ExtractedDataValidator:
     def __init__(self, extracted_dir: str):
         self.extracted_dir = extracted_dir
         self.files = []
+        self.externalExtensions = []
         self.error = None
 
     def is_valid(self) -> bool:
@@ -43,5 +44,8 @@ class ExtractedDataValidator:
         if required_files:
             self.error = f'Missing required .geojson files: {", ".join(required_files)}.'
             return False
+        
+        # Add OSW external extensions, GeoJSON files we know nothing about
+        self.externalExtensions.extend([item for item in geojson_files if item not in self.files])
 
         return True

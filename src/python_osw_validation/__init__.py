@@ -159,6 +159,17 @@ class OSWValidation:
                     self.errors.append(f"Invalid {osw_file} geometries found, id's of invalid geometries: {set(invalid_geojson['_id'])}")
                     return ValidationResult(False, self.errors)
                 
+            # Validate OSW external extensions
+            for file in validator.externalExtensions:
+                file_path = os.path.join(file)
+                extensionFile = gpd.read_file(file_path)
+                invalid_geojson = extensionFile[extensionFile.is_valid==False]
+                is_valid = len(invalid_geojson) == 0
+                if not is_valid:
+                    zip_handler.remove_extracted_files()
+                    self.errors.append(f"Invalid geometries found in extension file {file}, list of invalid geometries: {invalid_geojson.to_json()}")
+                    return ValidationResult(False, self.errors)
+            
             return ValidationResult(True)
         except Exception as e:
             self.errors.append(f'Unable to validate: {e}')
