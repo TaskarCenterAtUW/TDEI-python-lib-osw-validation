@@ -47,6 +47,9 @@ class ZipFileHandler:
             with zipfile.ZipFile(self.zip_file_path, "r") as zip_ref:
                 zip_ref.extractall(self.extracted_dir)
 
+            if len(zip_ref.namelist()) == 0:
+                raise Exception('ZIP file is empty')
+            
             first_item = zip_ref.namelist()[0]
 
             return f'{self.extracted_dir}/{first_item}'

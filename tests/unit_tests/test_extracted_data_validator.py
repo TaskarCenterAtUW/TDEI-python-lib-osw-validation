@@ -32,12 +32,12 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.create_files(['abc/a.nodes.geojson', 'abc/a.edges.geojson', 'abc/a.points.geojson'])
         self.assertTrue(validator.is_valid())
 
-    def test_missing_required_files(self):
-        # Test when one of the required files is missing
+    def test_duplicate_files(self):
+        # Test when there are duplicate files
         validator = ExtractedDataValidator(self.test_dir)
-        self.create_files(['a.nodes.geojson', 'a.points.geojson'])
+        self.create_files(['a.1.nodes.geojson', 'a.2.nodes.geojson'])
         self.assertFalse(validator.is_valid())
-        self.assertEqual(validator.error, 'Missing required .geojson files: edges.')
+        self.assertEqual(validator.error, 'Multiple .geojson files of the same type found: nodes.')
 
     def test_missing_optional_file(self):
         # Test when optional file is missing

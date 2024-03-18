@@ -26,3 +26,4 @@
 - Added additional validation steps based on the OSW network properties
 - Add external extensions to ExtractedDataValidator
 - Validate external extensions against basic Open Geospatial Consortium (OGC) standards
+- Aggregate schema errors and data integrity errors separately before returning errors to user
