@@ -2,6 +2,7 @@
 import os
 import git
 from datetime import date
+from src.python_osw_validation.version import __version__
 
 project_path = os.path.dirname(os.path.abspath(__file__))
 version_file_path = '{}/version.py'.format(project_path)
@@ -11,7 +12,7 @@ sha = repo.head.object.hexsha
 
 build_date = date.today().strftime('%Y-%m-%d')
 
-version = '0.0.5'
+version = __version__
 
 with open(version_file_path, 'w+') as version_file:
     version_file.write("version = '{}'\n".format(version))

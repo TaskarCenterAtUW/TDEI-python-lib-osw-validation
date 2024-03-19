@@ -18,3 +18,12 @@
 - Now handles the following two folder structures when unzipped abc.zip
   1. abc\{nodes, edges, points}.geojson
   2. {nodes, edges, points}.geojson
+
+### 0.2.0
+- Updated schema file to OSW 0.2
+- Added create_zip method to ZipFileHandler
+- Made all OSW files optional
+- Added additional validation steps based on the OSW network properties
+- Add external extensions to ExtractedDataValidator
+- Validate external extensions against basic Open Geospatial Consortium (OGC) standards
+- Aggregate schema errors and data integrity errors separately before returning errors to user
