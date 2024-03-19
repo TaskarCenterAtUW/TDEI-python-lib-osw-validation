@@ -19,7 +19,7 @@
   1. abc\{nodes, edges, points}.geojson
   2. {nodes, edges, points}.geojson
 
-### 0.0.6
+### 0.2.0
 - Updated schema file to OSW 0.2
 - Added create_zip method to ZipFileHandler
 - Made all OSW files optional

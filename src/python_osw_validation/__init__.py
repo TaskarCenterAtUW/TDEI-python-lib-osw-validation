@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional, List
 import geopandas as gpd
 from .zipfile_handler import ZipFileHandler
 from .extracted_data_validator import ExtractedDataValidator, OSW_dataset_files
+from .version import __version__
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
 
