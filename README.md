@@ -60,13 +60,19 @@ folder.
 ```shell
 
 >  coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests
-test_invalid_empty_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_invalid_missing_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_invalid_missing_required_files_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_valid_directory_structure (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_duplicate_files (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_empty_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_invalid_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_missing_optional_file (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_no_geojson_files (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_valid_data_at_root (test_extracted_data_validator.TestExtractedDataValidator) ... ok
+test_valid_data_inside_folder (test_extracted_data_validator.TestExtractedDataValidator) ... ok
 test_edges_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_edges_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
+test_external_extension_file_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
+test_external_extension_file_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
+test_external_extension_file_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_extra_field_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_id_missing_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_invalid_geometry_zipfile (test_osw_validation.TestOSWValidation) ... ok
@@ -76,9 +82,6 @@ test_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_minimal_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_minimal_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
 test_minimal_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_missing_files_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_missing_files_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_missing_files_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
 test_missing_identifier_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_no_entity_zipfile (test_osw_validation.TestOSWValidation) ... ok
 test_nodes_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
@@ -96,7 +99,7 @@ test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
 test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
 
 ----------------------------------------------------------------------
-Ran 34 tests in 121.220s
+Ran 37 tests in 1284.068s
 
 OK
 ```

@@ -2,10 +2,38 @@ import os
 import glob
 
 
+OSW_dataset_files = {"edges": {
+                                "required": False,
+                                "geometry": "LineString"
+                              },
+                     "nodes": {
+                                "required": False,
+                                "geometry": "Point"
+                              },
+                     "points": {
+                                "required": False,
+                                "geometry": "Point"
+                              },
+                     "lines": {
+                                "required": False,
+                                "geometry": "LineString"
+                              },
+                     "zones": {
+                                "required": False,
+                                "geometry": "Polygon"
+                              },
+                     "polygons": {
+                                "required": False,
+                                "geometry": "Polygon"
+                              }
+                    }
+
+
 class ExtractedDataValidator:
     def __init__(self, extracted_dir: str):
         self.extracted_dir = extracted_dir
         self.files = []
+        self.externalExtensions = []
         self.error = None
 
     def is_valid(self) -> bool:
@@ -25,23 +53,48 @@ class ExtractedDataValidator:
             self.error = 'No .geojson files found in the specified directory or its subdirectories.'
             return False
 
-        required_files = {'nodes', 'edges'}
-        optional_files = {'points'}
-        for filename in geojson_files:
-            base_name = os.path.basename(filename)
-            for required_file in required_files:
+        required_files = [key for key, value in OSW_dataset_files.items() if value['required']]
+        optional_files = [key for key, value in OSW_dataset_files.items() if not value['required']]
+        missing_files = []
+        duplicate_files = []
+        for required_file in required_files:
+            file_count = 0
+            for filename in geojson_files:
+                base_name = os.path.basename(filename)
                 if required_file in base_name and base_name.endswith('.geojson'):
-                    self.files.append(filename)
-                    required_files.remove(required_file)
-                    break
-            for optional_file in optional_files:
-                if optional_file in base_name and base_name.endswith('.geojson'):
-                    self.files.append(filename)
-                    optional_files.remove(optional_file)
-                    break
+                    file_count += 1
+                    save_filename = filename
+            if file_count == 0:
+                # Missing required file
+                missing_files.append(required_file)
+            elif file_count == 1:
+                self.files.append(save_filename)
+            else:
+                # Duplicate file
+                duplicate_files.append(required_file)
 
-        if required_files:
-            self.error = f'Missing required .geojson files: {", ".join(required_files)}.'
+        for optional_file in optional_files:
+            file_count = 0
+            for filename in geojson_files:
+                base_name = os.path.basename(filename)
+                if optional_file in base_name and base_name.endswith('.geojson'):
+                    file_count += 1
+                    save_filename = filename
+            if file_count == 1:
+                self.files.append(save_filename)
+            elif file_count > 1:
+                # Duplicate file
+                duplicate_files.append(optional_file)
+
+        if missing_files:
+            self.error = f'Missing required .geojson files: {", ".join(missing_files)}.'
             return False
+        
+        if duplicate_files:
+            self.error = f'Multiple .geojson files of the same type found: {", ".join(duplicate_files)}.'
+            return False
+        
+        # Add OSW external extensions, GeoJSON files we know nothing about
+        self.externalExtensions.extend([item for item in geojson_files if item not in self.files])
 
         return True

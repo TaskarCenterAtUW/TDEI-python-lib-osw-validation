@@ -19,7 +19,7 @@ class TestOSWValidation(unittest.TestCase):
         self.nodes_invalid_zipfile = os.path.join(ASSETS_PATH, 'nodes_invalid.zip')
         self.edges_invalid_zipfile = os.path.join(ASSETS_PATH, 'edges_invalid.zip')
         self.points_invalid_zipfile = os.path.join(ASSETS_PATH, 'points_invalid.zip')
-        self.missing_files_zipfile = os.path.join(ASSETS_PATH, 'invalid_files.zip')
+        self.external_extension_file_zipfile = os.path.join(ASSETS_PATH, 'external_extension.zip')
         self.id_missing_zipfile = os.path.join(ASSETS_PATH, '_id_missing.zip')
         self.extra_field_zipfile = os.path.join(ASSETS_PATH, 'extra_field.zip')
         self.invalid_geometry_zipfile = os.path.join(ASSETS_PATH, 'invalid_geometry.zip')
@@ -136,23 +136,24 @@ class TestOSWValidation(unittest.TestCase):
         result = validation.validate()
         self.assertTrue(len(result.errors) > 0)
 
-    def test_missing_files_inside_zipfile(self):
-        validation = OSWValidation(zipfile_path=self.missing_files_zipfile)
+    def test_external_extension_file_inside_zipfile(self):
+        validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile)
         result = validation.validate()
-        self.assertFalse(result.is_valid)
-        self.assertIsNotNone(result.errors)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
 
-    def test_missing_files_inside_zipfile_with_schema(self):
-        validation = OSWValidation(zipfile_path=self.missing_files_zipfile, schema_file_path=self.schema_file_path)
+    def test_external_extension_file_inside_zipfile_with_schema(self):
+        validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile, schema_file_path=self.schema_file_path)
         result = validation.validate()
-        self.assertFalse(result.is_valid)
-        self.assertIsNotNone(result.errors)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
 
-    def test_missing_files_inside_zipfile_with_invalid_schema(self):
-        validation = OSWValidation(zipfile_path=self.missing_files_zipfile,
+    def test_external_extension_file_inside_zipfile_with_invalid_schema(self):
+        validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile,
                                    schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
-        self.assertTrue(len(result.errors) > 0)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
 
     def test_id_missing_zipfile(self):
         validation = OSWValidation(zipfile_path=self.id_missing_zipfile)
