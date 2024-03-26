@@ -5,6 +5,7 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(PARENT_DIR, 'tests/assets')
 VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid.zip')
 INVALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'invalid.zip')
+TEST_ZIP_FILE = os.path.join(ASSETS_DIR,'Archive.zip')
 SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_osw_validation/schema')
 SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema.json')
 
@@ -35,9 +36,16 @@ def invalid_test_without_provided_schema():
     result = validator.validate()
     print(f'Invalid Test Without Schema: {"Failed" if result.is_valid else "Passed"}')
 
+def test_with_archive_file():
+    validator = OSWValidation(zipfile_path=TEST_ZIP_FILE)
+    result = validator.validate()
+    print(result.errors)
+    print(result.is_valid)
+
 
 if __name__ == '__main__':
-    valid_test_with_provided_schema()
-    valid_test_without_provided_schema()
-    invalid_test_with_provided_schema()
-    invalid_test_without_provided_schema()
+    # valid_test_with_provided_schema()
+    # valid_test_without_provided_schema()
+    # invalid_test_with_provided_schema()
+    # invalid_test_without_provided_schema()
+    test_with_archive_file()

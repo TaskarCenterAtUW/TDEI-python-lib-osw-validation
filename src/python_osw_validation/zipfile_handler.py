@@ -50,11 +50,20 @@ class ZipFileHandler:
             if len(zip_ref.namelist()) == 0:
                 raise Exception('ZIP file is empty')
             
-            first_item = zip_ref.namelist()[0]
-
-            return f'{self.extracted_dir}/{first_item}'
+            internal_folder_name = self.find_internal_folder(zip_ref)
+            return os.path.join(self.extracted_dir,internal_folder_name)
         except Exception as e:
             self.error = f'Error extracting ZIP file: {e}'
+    
+    # finds the first folder available in the extracted folder. 
+    # returns empty if there are no folders inside
+    def find_internal_folder(self, zip_ref: zipfile.ZipFile)-> str:
+        for filename in zip_ref.namelist():
+            path = os.path.join(self.extracted_dir,filename)
+            if(os.path.isdir(path)):
+                return filename
+        return ''
+
 
     def remove_extracted_files(self) -> None:
         if self.extracted_dir and os.path.exists(self.extracted_dir):
