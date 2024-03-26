@@ -51,7 +51,8 @@ class ZipFileHandler:
                 raise Exception('ZIP file is empty')
             
             first_item = zip_ref.namelist()[0]
-
+            if os.path.isfile(f'{self.extracted_dir}/{first_item}'):
+                return self.extracted_dir
             return f'{self.extracted_dir}/{first_item}'
         except Exception as e:
             self.error = f'Error extracting ZIP file: {e}'
