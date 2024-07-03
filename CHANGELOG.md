@@ -1,5 +1,13 @@
 # Change log
 
+### 0.2.2
+- Added functionality to get the specific number of errors
+  ```
+  validator = OSWValidation(zipfile_path=<ZIP_FILE_PATH>)
+  result = validator.validate() // will return only first 20 errors by default
+  result = validator.validate(max_errors=10) // will return only first 10 errors
+  ```
+
 ### 0.2.1
 - Updated zipfile_handler
 - Fixed "No .geojson files found in the specified directory or its subdirectories." issue
