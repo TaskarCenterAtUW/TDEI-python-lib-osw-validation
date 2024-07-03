@@ -28,9 +28,13 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 from python_osw_validation import OSWValidation
 
 validator = OSWValidation(zipfile_path='<Zip file path>')
-result = validator.validate()
+result = validator.validate()  
 print(result.is_valid)
-print(result.errors)
+print(result.errors) # will return first 20 errors by default if there are errors
+
+result = validator.validate(max_errors=10)  
+print(result.is_valid)
+print(result.errors) # will return first 10 errors depending on the max_errors parameter
 
 ```
 
