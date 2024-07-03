@@ -76,6 +76,20 @@ class TestOSWValidation(unittest.TestCase):
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.errors)
 
+    def test_invalid_zipfile_default_error_count(self):
+        validation = OSWValidation(zipfile_path=self.invalid_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        self.assertLessEqual(len(result.errors), 20)
+
+    def test_invalid_zipfile_should_specific_errors_counts(self):
+        validation = OSWValidation(zipfile_path=self.invalid_zipfile)
+        result = validation.validate(max_errors=10)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        self.assertLessEqual(len(result.errors), 10)
+
     def test_invalid_zipfile_with_invalid_schema(self):
         validation = OSWValidation(zipfile_path=self.invalid_zipfile,
                                        schema_file_path=self.invalid_schema_file_path)
