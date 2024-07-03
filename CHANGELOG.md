@@ -1,7 +1,7 @@
 # Change log
 
 ### 0.2.2
-- Added functionality to get the specific umber of errors
+- Added functionality to get the specific number of errors
   ```
   validator = OSWValidation(zipfile_path=<ZIP_FILE_PATH>)
   result = validator.validate() // will return only first 20 errors by default
