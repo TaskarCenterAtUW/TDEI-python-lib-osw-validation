@@ -1,5 +1,9 @@
 # Change log
 
+### 0.2.3
+- Performance improvement if there are any errors
+
+
 ### 0.2.2
 - Added functionality to get the specific number of errors
   ```
