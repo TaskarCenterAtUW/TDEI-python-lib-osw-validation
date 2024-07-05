@@ -152,13 +152,13 @@ class OSWValidation:
         '''Validate OSW Data against the schema and process all errors'''
         geojson_data = self.load_osw_file(file_path)
         validator = jsonschema.Draft7Validator(self.load_osw_schema(self.schema_file_path))
-        errors = list(validator.iter_errors(geojson_data))
 
-        if errors:
-            for index, error in enumerate(errors):
-                if index < max_errors:
-                    self.errors.append(f'Validation error: {error.message}')
-                    if len(self.errors) == max_errors:
-                        break
+        for error in validator.iter_errors(geojson_data):
+            self.errors.append(f'Validation error: {error.message}')
+            if len(self.errors) == max_errors:
+                break
+
+        if len(self.errors) >= max_errors:
             return False
+
         return True
