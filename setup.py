@@ -1,13 +1,5 @@
-import os
-from setuptools import setup, find_packages, Extension
 from version import version
-
-project_path = os.path.dirname(os.path.realpath(__file__))
-requirements_file = '{}/requirements.txt'.format(project_path)
-
-with open(requirements_file) as f:
-    content = f.readlines()
-install_requires = [x.strip() for x in content]
+from setuptools import setup, find_packages
 
 with open('README.md', 'r') as fh:
     long_description = fh.read()
@@ -26,7 +18,11 @@ setup(
     },
     long_description_content_type='text/markdown',
     url='https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation',
-    install_requires=install_requires,
+    install_requires=[
+        'jsonschema',
+        'zipfile36',
+        'geopandas'
+    ],
     packages=find_packages(where='src'),
     classifiers=[
         'Programming Language :: Python :: 3',
