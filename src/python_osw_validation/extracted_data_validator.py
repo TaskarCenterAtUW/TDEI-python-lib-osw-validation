@@ -1,32 +1,32 @@
 import os
 import glob
 
-
-OSW_dataset_files = {"edges": {
-                                "required": False,
-                                "geometry": "LineString"
-                              },
-                     "nodes": {
-                                "required": False,
-                                "geometry": "Point"
-                              },
-                     "points": {
-                                "required": False,
-                                "geometry": "Point"
-                              },
-                     "lines": {
-                                "required": False,
-                                "geometry": "LineString"
-                              },
-                     "zones": {
-                                "required": False,
-                                "geometry": "Polygon"
-                              },
-                     "polygons": {
-                                "required": False,
-                                "geometry": "Polygon"
-                              }
-                    }
+OSW_DATASET_FILES = {
+    "edges": {
+        "required": False,
+        "geometry": "LineString"
+    },
+    "nodes": {
+        "required": False,
+        "geometry": "Point"
+    },
+    "points": {
+        "required": False,
+        "geometry": "Point"
+    },
+    "lines": {
+        "required": False,
+        "geometry": "LineString"
+    },
+    "zones": {
+        "required": False,
+        "geometry": "Polygon"
+    },
+    "polygons": {
+        "required": False,
+        "geometry": "Polygon"
+    }
+}
 
 
 class ExtractedDataValidator:
@@ -53,8 +53,8 @@ class ExtractedDataValidator:
             self.error = 'No .geojson files found in the specified directory or its subdirectories.'
             return False
 
-        required_files = [key for key, value in OSW_dataset_files.items() if value['required']]
-        optional_files = [key for key, value in OSW_dataset_files.items() if not value['required']]
+        required_files = [key for key, value in OSW_DATASET_FILES.items() if value['required']]
+        optional_files = [key for key, value in OSW_DATASET_FILES.items() if not value['required']]
         missing_files = []
         duplicate_files = []
         for required_file in required_files:
@@ -89,11 +89,11 @@ class ExtractedDataValidator:
         if missing_files:
             self.error = f'Missing required .geojson files: {", ".join(missing_files)}.'
             return False
-        
+
         if duplicate_files:
             self.error = f'Multiple .geojson files of the same type found: {", ".join(duplicate_files)}.'
             return False
-        
+
         # Add OSW external extensions, GeoJSON files we know nothing about
         self.externalExtensions.extend([item for item in geojson_files if item not in self.files])
 

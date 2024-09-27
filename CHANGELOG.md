@@ -3,6 +3,10 @@
 ### 0.2.5
 - Updated geopandas package 
 
+### 0.2.6
+- Add garbage collection to free up memory after validation
+
+
 ### 0.2.3
 - Performance improvement if there are any errors
 
