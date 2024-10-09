@@ -1,7 +1,7 @@
 import os
 import gc
 import json
-import jsonschema
+import jsonschema_rs
 from typing import Dict, Any, Optional, List
 import geopandas as gpd
 from .zipfile_handler import ZipFileHandler
@@ -155,7 +155,7 @@ class OSWValidation:
     def validate_osw_errors(self, file_path: str, max_errors: int) -> bool:
         """Validate OSW Data against the schema and process all errors"""
         geojson_data = self.load_osw_file(file_path)
-        validator = jsonschema.Draft7Validator(self.load_osw_schema(self.schema_file_path))
+        validator = jsonschema_rs.Draft7Validator(self.load_osw_schema(self.schema_file_path))
 
         for error in validator.iter_errors(geojson_data):
             self.errors.append(f'Validation error: {error.message}')
