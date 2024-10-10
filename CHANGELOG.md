@@ -1,5 +1,11 @@
 # Change log
 
+### 0.2.7
+- Switch to `jsonschema_rs` for performance enhancement, instead of `jsonschema` package 
+- using `glob.iglob` instead of `glob.glob`, which processes files one by one and does not store the entire list of files in memory at once
+- Refactor code for improve memory utilization
+- Added garbage collector
+
 ### 0.2.6
 - Add garbage collection to free up memory after validation
 

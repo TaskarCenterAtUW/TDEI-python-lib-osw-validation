@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 import tempfile
@@ -54,6 +55,8 @@ class ZipFileHandler:
             return os.path.join(self.extracted_dir,internal_folder_name)
         except Exception as e:
             self.error = f'Error extracting ZIP file: {e}'
+        finally:
+            gc.collect()
     
     # finds the first folder available in the extracted folder. 
     # returns empty if there are no folders inside

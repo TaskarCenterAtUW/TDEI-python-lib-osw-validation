@@ -1,4 +1,5 @@
 import os
+import gc
 import glob
 
 OSW_DATASET_FILES = {
@@ -42,50 +43,41 @@ class ExtractedDataValidator:
             self.error = 'Directory does not exist.'
             return False
 
-        # Look for required files at the root level
-        geojson_files = glob.glob(os.path.join(self.extracted_dir, '*.geojson'))
+        # Use a generator for geojson files to avoid storing all paths in memory
+        geojson_files = glob.iglob(os.path.join(self.extracted_dir, '**', '*.geojson'), recursive=True)
 
-        # If not found at the root, check inside folders
-        if not geojson_files:
-            geojson_files = glob.glob(os.path.join(self.extracted_dir, '*', '*.geojson'))
+        required_files = {key for key, value in OSW_DATASET_FILES.items() if value['required']}
+        optional_files = {key for key, value in OSW_DATASET_FILES.items() if not value['required']}
+        missing_files = set()
+        duplicate_files = set()
+        found_files = {key: [] for key in OSW_DATASET_FILES}
 
-        if not geojson_files:
-            self.error = 'No .geojson files found in the specified directory or its subdirectories.'
-            return False
+        for filename in geojson_files:
+            base_name = os.path.basename(filename)
+            for file_type in OSW_DATASET_FILES:
+                if file_type in base_name:
+                    found_files[file_type].append(filename)
+                    break
 
-        required_files = [key for key, value in OSW_DATASET_FILES.items() if value['required']]
-        optional_files = [key for key, value in OSW_DATASET_FILES.items() if not value['required']]
-        missing_files = []
-        duplicate_files = []
-        for required_file in required_files:
-            file_count = 0
-            for filename in geojson_files:
-                base_name = os.path.basename(filename)
-                if required_file in base_name and base_name.endswith('.geojson'):
-                    file_count += 1
-                    save_filename = filename
-            if file_count == 0:
-                # Missing required file
-                missing_files.append(required_file)
-            elif file_count == 1:
-                self.files.append(save_filename)
-            else:
-                # Duplicate file
-                duplicate_files.append(required_file)
-
-        for optional_file in optional_files:
-            file_count = 0
-            for filename in geojson_files:
-                base_name = os.path.basename(filename)
-                if optional_file in base_name and base_name.endswith('.geojson'):
-                    file_count += 1
-                    save_filename = filename
-            if file_count == 1:
-                self.files.append(save_filename)
+        # Process required and optional files
+        for file_type, files in found_files.items():
+            file_count = len(files)
+            if file_type in required_files:
+                if file_count == 0:
+                    missing_files.add(file_type)
+                elif file_count == 1:
+                    self.files.append(files[0])
+                else:
+                    duplicate_files.add(file_type)
+            elif file_type in optional_files and file_count == 1:
+                self.files.append(files[0])
             elif file_count > 1:
-                # Duplicate file
-                duplicate_files.append(optional_file)
+                duplicate_files.add(file_type)
 
+        # Release memory after processing files
+        gc.collect()
+
+        # Check for missing or duplicate files
         if missing_files:
             self.error = f'Missing required .geojson files: {", ".join(missing_files)}.'
             return False
@@ -95,6 +87,11 @@ class ExtractedDataValidator:
             return False
 
         # Add OSW external extensions, GeoJSON files we know nothing about
-        self.externalExtensions.extend([item for item in geojson_files if item not in self.files])
+        self.externalExtensions.extend(
+            filename for file_list in found_files.values() for filename in file_list if filename not in self.files
+        )
+
+        # Release memory after collecting external extensions
+        gc.collect()
 
         return True
