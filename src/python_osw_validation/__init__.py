@@ -1,10 +1,10 @@
 import os
 import gc
 import json
-import jsonschema
-from typing import Dict, Any, Optional, List
+import jsonschema_rs
 import geopandas as gpd
 from .zipfile_handler import ZipFileHandler
+from typing import Dict, Any, Optional, List
 from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES
 from .version import __version__
 
@@ -37,7 +37,7 @@ class OSWValidation:
         except Exception as e:
             self.errors.append(f'Invalid or missing schema file: {e}')
             raise Exception(f'Invalid or missing schema file: {e}')
-        
+
     def are_ids_unique(self, gdf):
         """Check for duplicate values in the _id field"""
         duplicates = gdf[gdf.duplicated('_id', keep=False)]['_id'].unique()
@@ -47,6 +47,7 @@ class OSWValidation:
     def validate(self, max_errors=20) -> ValidationResult:
         zip_handler = None
         OSW_DATASET = {}
+        validator = None
         try:
             # Extract the zipfile
             zip_handler = ZipFileHandler(self.zipfile_path)
@@ -73,7 +74,8 @@ class OSWValidation:
             # Validate data integrity
             for file in validator.files:
                 file_path = os.path.join(file)
-                osw_file = next((osw_file_any for osw_file_any in OSW_DATASET_FILES.keys() if osw_file_any in file_path), '')
+                osw_file = next(
+                    (osw_file_any for osw_file_any in OSW_DATASET_FILES.keys() if osw_file_any in file_path), '')
                 OSW_DATASET[osw_file] = gpd.read_file(file_path)
 
             # Are all id's unique in each file? No need to check uniqueness across files yet since we do not have a global OSW ID format yet
@@ -104,26 +106,32 @@ class OSWValidation:
             unmatched = node_ids_edges_u - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
-                self.errors.append(f"All _u_id's in edges should be part of _id's mentioned in nodes, _u_id's not in nodes are: {unmatched}")
+                self.errors.append(
+                    f"All _u_id's in edges should be part of _id's mentioned in nodes, _u_id's not in nodes are: {unmatched}")
 
             # Do all node references in _v_id exist in nodes?
             unmatched = node_ids_edges_v - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
-                self.errors.append(f"All _v_id's in edges should be part of _id's mentioned in nodes, _v_id's not in nodes are: {unmatched}")
+                self.errors.append(
+                    f"All _v_id's in edges should be part of _id's mentioned in nodes, _v_id's not in nodes are: {unmatched}")
 
             # Do all node references in _w_id exist in nodes?
             unmatched = node_ids_zones_w - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
-                self.errors.append(f"All _w_id's in zones should be part of _id's mentioned in nodes, _w_id's not in nodes are: {unmatched}")
+                self.errors.append(
+                    f"All _w_id's in zones should be part of _id's mentioned in nodes, _w_id's not in nodes are: {unmatched}")
 
             # Geometry validation: check geometry type in each file and test if coordinates make a shape that is reasonable geometric shape according to the Simple Feature Access standard
             for osw_file in OSW_DATASET:
-                invalid_geojson = OSW_DATASET[osw_file][(OSW_DATASET[osw_file].geometry.type != OSW_DATASET_FILES[osw_file]['geometry']) | (OSW_DATASET[osw_file].is_valid == False)]
+                invalid_geojson = OSW_DATASET[osw_file][
+                    (OSW_DATASET[osw_file].geometry.type != OSW_DATASET_FILES[osw_file]['geometry']) | (
+                                OSW_DATASET[osw_file].is_valid == False)]
                 is_valid = len(invalid_geojson) == 0
                 if not is_valid:
-                    self.errors.append(f"Invalid {osw_file} geometries found, id's of invalid geometries: {set(invalid_geojson['_id'])}")
+                    self.errors.append(
+                        f"Invalid {osw_file} geometries found, id's of invalid geometries: {set(invalid_geojson['_id'])}")
 
             # Validate OSW external extensions
             for file in validator.externalExtensions:
@@ -132,7 +140,8 @@ class OSWValidation:
                 invalid_geojson = extensionFile[extensionFile.is_valid == False]
                 is_valid = len(invalid_geojson) == 0
                 if not is_valid:
-                    self.errors.append(f"Invalid geometries found in extension file {file}, list of invalid geometries: {invalid_geojson.to_json()}")
+                    self.errors.append(
+                        f"Invalid geometries found in extension file {file}, list of invalid geometries: {invalid_geojson.to_json()}")
 
             if self.errors:
                 return ValidationResult(False, self.errors)
@@ -145,6 +154,16 @@ class OSWValidation:
             del OSW_DATASET
             if zip_handler:
                 zip_handler.remove_extracted_files()
+
+            # Force garbage collection to free memory
+            gc.collect()
+
+            # Additional memory cleanup for geopandas dataframes
+            if validator:
+                for osw_file in validator.files:
+                    if osw_file in locals():
+                        del osw_file
+                del validator
             gc.collect()
 
     def load_osw_file(self, graph_geojson_path: str) -> Dict[str, Any]:
@@ -155,7 +174,7 @@ class OSWValidation:
     def validate_osw_errors(self, file_path: str, max_errors: int) -> bool:
         """Validate OSW Data against the schema and process all errors"""
         geojson_data = self.load_osw_file(file_path)
-        validator = jsonschema.Draft7Validator(self.load_osw_schema(self.schema_file_path))
+        validator = jsonschema_rs.Draft7Validator(self.load_osw_schema(self.schema_file_path))
 
         for error in validator.iter_errors(geojson_data):
             self.errors.append(f'Validation error: {error.message}')
