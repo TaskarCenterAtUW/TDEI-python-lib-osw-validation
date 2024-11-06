@@ -7,6 +7,7 @@ from .zipfile_handler import ZipFileHandler
 from typing import Dict, Any, Optional, List
 from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES
 from .version import __version__
+import traceback
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
 
@@ -149,6 +150,7 @@ class OSWValidation:
                 return ValidationResult(True)
         except Exception as e:
             self.errors.append(f'Unable to validate: {e}')
+            traceback.print_exc()
             return ValidationResult(False, self.errors)
         finally:
             del OSW_DATASET
