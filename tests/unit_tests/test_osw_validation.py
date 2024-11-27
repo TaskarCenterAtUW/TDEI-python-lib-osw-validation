@@ -26,6 +26,9 @@ class TestOSWValidation(unittest.TestCase):
         self.missing_identifier_zipfile = os.path.join(ASSETS_PATH, 'missing_identifier.zip')
         self.no_entity_zipfile = os.path.join(ASSETS_PATH, 'no_entity.zip')
         self.wrong_datatypes_zipfile = os.path.join(ASSETS_PATH, 'wrong_datatype.zip')
+        self.valid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.valid.zip')
+        self.invalid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.invalid.zip')
+        self.valid_osw_file = os.path.join(ASSETS_PATH, 'wa.bellevue.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
 
@@ -201,6 +204,24 @@ class TestOSWValidation(unittest.TestCase):
 
     def test_wrong_datatypes_zipfile(self):
         validation = OSWValidation(zipfile_path=self.wrong_datatypes_zipfile)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+
+    def test_valid_osw_file(self):
+        validation = OSWValidation(zipfile_path=self.valid_osw_file)
+        result = validation.validate()
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_valid_zones_file(self):
+        validation = OSWValidation(zipfile_path=self.valid_zones_file)
+        result = validation.validate()
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_invalid_zones_file(self):
+        validation = OSWValidation(zipfile_path=self.invalid_zones_file)
         result = validation.validate()
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.errors)

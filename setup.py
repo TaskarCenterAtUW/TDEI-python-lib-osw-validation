@@ -19,9 +19,9 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation',
     install_requires=[
-        'jsonschema_rs',
-        'zipfile36',
-        'geopandas'
+        'jsonschema_rs==0.26.1',
+        'zipfile36==0.0.12',
+        'geopandas==0.14.4'
     ],
     packages=find_packages(where='src'),
     classifiers=[
