@@ -1,4 +1,4 @@
 jsonschema_rs
 zipfile36
 coverage
-geopandas
+geopandas==0.14.4
