@@ -107,22 +107,34 @@ class OSWValidation:
             unmatched = node_ids_edges_u - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
+                unmatched_list = list(unmatched)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
                 self.errors.append(
-                    f"All _u_id's in edges should be part of _id's mentioned in nodes, _u_id's not in nodes are: {unmatched}")
+                    f"All _u_id's in edges should be part of _id's mentioned in nodes. "
+                    f"Showing 20 out of {len(unmatched)} unmatched _u_id's: {displayed_unmatched}"
+                )
 
             # Do all node references in _v_id exist in nodes?
             unmatched = node_ids_edges_v - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
+                unmatched_list = list(unmatched)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
                 self.errors.append(
-                    f"All _v_id's in edges should be part of _id's mentioned in nodes, _v_id's not in nodes are: {unmatched}")
+                    f"All _v_id's in edges should be part of _id's mentioned in nodes. "
+                    f"Showing 20 out of {len(unmatched)} unmatched _v_id's: {displayed_unmatched}"
+                )
 
             # Do all node references in _w_id exist in nodes?
             unmatched = node_ids_zones_w - node_ids
             is_valid = len(unmatched) == 0
             if not is_valid:
+                unmatched_list = list(unmatched)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
                 self.errors.append(
-                    f"All _w_id's in zones should be part of _id's mentioned in nodes, _w_id's not in nodes are: {unmatched}")
+                    f"All _w_id's in zones should be part of _id's mentioned in nodes. "
+                    f"Showing 20 out of {len(unmatched)} unmatched _w_id's: {displayed_unmatched}"
+                )
 
             # Geometry validation: check geometry type in each file and test if coordinates make a shape that is reasonable geometric shape according to the Simple Feature Access standard
             for osw_file in OSW_DATASET:
