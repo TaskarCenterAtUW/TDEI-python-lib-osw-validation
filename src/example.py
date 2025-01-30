@@ -45,8 +45,8 @@ def invalid_test_vancouver_dataset():
 
 
 if __name__ == '__main__':
-    # valid_test_with_provided_schema()
-    # valid_test_without_provided_schema()
-    # invalid_test_with_provided_schema()
+    valid_test_with_provided_schema()
+    valid_test_without_provided_schema()
+    invalid_test_with_provided_schema()
     invalid_test_without_provided_schema()
-    # invalid_test_vancouver_dataset()
+    invalid_test_vancouver_dataset()
