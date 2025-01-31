@@ -108,10 +108,12 @@ class OSWValidation:
             is_valid = len(unmatched) == 0
             if not is_valid:
                 unmatched_list = list(unmatched)
-                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
+                num_unmatched = len(unmatched_list)
+                limit = min(num_unmatched, 20)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                 self.errors.append(
                     f"All _u_id's in edges should be part of _id's mentioned in nodes. "
-                    f"Showing 20 out of {len(unmatched)} unmatched _u_id's: {displayed_unmatched}"
+                    f"Showing {'20' if num_unmatched > 20 else 'all'} out of {len(unmatched)} unmatched _u_id's: {displayed_unmatched}"
                 )
 
             # Do all node references in _v_id exist in nodes?
@@ -119,10 +121,12 @@ class OSWValidation:
             is_valid = len(unmatched) == 0
             if not is_valid:
                 unmatched_list = list(unmatched)
-                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
+                num_unmatched = len(unmatched_list)
+                limit = min(num_unmatched, 20)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                 self.errors.append(
                     f"All _v_id's in edges should be part of _id's mentioned in nodes. "
-                    f"Showing 20 out of {len(unmatched)} unmatched _v_id's: {displayed_unmatched}"
+                    f"Showing {'20' if num_unmatched > 20 else 'all'} out of {len(unmatched)} unmatched _v_id's: {displayed_unmatched}"
                 )
 
             # Do all node references in _w_id exist in nodes?
@@ -130,10 +134,12 @@ class OSWValidation:
             is_valid = len(unmatched) == 0
             if not is_valid:
                 unmatched_list = list(unmatched)
-                displayed_unmatched = ', '.join(map(str, unmatched_list[:20]))
+                num_unmatched = len(unmatched_list)
+                limit = min(num_unmatched, 20)
+                displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                 self.errors.append(
                     f"All _w_id's in zones should be part of _id's mentioned in nodes. "
-                    f"Showing 20 out of {len(unmatched)} unmatched _w_id's: {displayed_unmatched}"
+                    f"Showing {'20' if num_unmatched > 20 else 'all'} out of {len(unmatched)} unmatched _w_id's: {displayed_unmatched}"
                 )
 
             # Geometry validation: check geometry type in each file and test if coordinates make a shape that is reasonable geometric shape according to the Simple Feature Access standard
@@ -143,8 +149,14 @@ class OSWValidation:
                                 OSW_DATASET[osw_file].is_valid == False)]
                 is_valid = len(invalid_geojson) == 0
                 if not is_valid:
+                    invalid_ids = list(set(invalid_geojson['_id']))
+                    num_invalid = len(invalid_ids)
+                    limit = min(num_invalid, 20)
+                    displayed_invalid = ', '.join(map(str, invalid_ids[:min(num_invalid, limit)]))
                     self.errors.append(
-                        f"Invalid {osw_file} geometries found, id's of invalid geometries: {set(invalid_geojson['_id'])}")
+                        f"Showing {'20' if num_invalid > 20 else 'all'} out of {num_invalid} invalid {osw_file} geometries, "
+                        f"id's of invalid geometries: {displayed_invalid}"
+                        )
 
             # Validate OSW external extensions
             for file in validator.externalExtensions:
