@@ -29,6 +29,7 @@ class TestOSWValidation(unittest.TestCase):
         self.valid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.valid.zip')
         self.invalid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.invalid.zip')
         self.valid_osw_file = os.path.join(ASSETS_PATH, 'wa.bellevue.zip')
+        self.invalid_v_id_file = os.path.join(ASSETS_PATH, '4151.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
 
@@ -45,7 +46,6 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIsNone(result.errors)
 
     def test_valid_zipfile_with_invalid_schema(self):
-
         validation = OSWValidation(zipfile_path=self.valid_zipfile, schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
         self.assertTrue(len(result.errors) > 0)
@@ -95,7 +95,7 @@ class TestOSWValidation(unittest.TestCase):
 
     def test_invalid_zipfile_with_invalid_schema(self):
         validation = OSWValidation(zipfile_path=self.invalid_zipfile,
-                                       schema_file_path=self.invalid_schema_file_path)
+                                   schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
         self.assertTrue(len(result.errors) > 0)
 
@@ -160,7 +160,8 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIsNone(result.errors)
 
     def test_external_extension_file_inside_zipfile_with_schema(self):
-        validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile, schema_file_path=self.schema_file_path)
+        validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile,
+                                   schema_file_path=self.schema_file_path)
         result = validation.validate()
         self.assertTrue(result.is_valid)
         self.assertIsNone(result.errors)
@@ -225,6 +226,29 @@ class TestOSWValidation(unittest.TestCase):
         result = validation.validate()
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.errors)
+
+    def test_unmatched_ids_limited_to_20(self):
+        validation = OSWValidation(zipfile_path=self.invalid_v_id_file)
+        result = validation.validate()
+
+        # Ensure validation fails
+        self.assertFalse(result.is_valid, 'Validation should fail, but it passed.')
+        self.assertTrue(result.errors, 'Validation should produce errors, but it returned none.')
+
+        # Try to find the unmatched ID error message
+        error_message = next((err for err in result.errors if 'unmatched' in err.lower()), None)
+
+        # Ensure the error message exists
+        self.assertIsNotNone(error_message, 'Expected error message for unmatched IDs not found.')
+
+        # Extract the displayed IDs from the message
+        extracted_ids = error_message.split(':')[-1].strip().split(', ')
+
+        # Ensure only 20 IDs are displayed
+        self.assertLessEqual(len(extracted_ids), 20, 'More than 20 unmatched IDs displayed in the error message.')
+
+        # Ensure the total count is mentioned
+        self.assertIn('Showing 20 out of', error_message)
 
 
 if __name__ == '__main__':

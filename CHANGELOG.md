@@ -1,5 +1,10 @@
 # Change log
 
+### 0.2.10
+
+- Added limit the message error when u_id and v_id are missing
+- Added Unit test cases for missing u_id and v_id
+
 ### 0.2.8
 
 - Fixed geopands version to `0.14.4`.
