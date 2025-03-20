@@ -107,3 +107,24 @@ Ran 37 tests in 1284.068s
 
 OK
 ```
+
+## Use locally:
+To use the library locally, use the [example.py](./src/example.py) code
+
+## Deployment:
+
+- The library can be pushed to [TestPy](https://test.pypi.org/project/python-osw-validation/) or [PYPI](https://pypi.org/project/python-osw-validation/)
+### Deploy to TestPy
+- On every push to `dev` branch, a workflow is triggered which publishes the updated version to TestPy
+
+### Deploy to PyPI
+- This happens whenever a tag/release is created with `*.*.*` notation (eg. 0.0.8)
+- To change the version, change the version at [version.py](./src/python_osw_validation/version.py)
+- To release a new version:
+  - Go to Github link of this repository
+  - Under [releases](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/releases), click on `Draft a new release`
+  - Under `choose a new tag`, add a new tag `v*.*.*` , Generate Release notes
+  - Choose `main` branch for release
+  - Publish the release.
+- This release triggers a workflow to generate the new version of the Package.
+- The new package will be available at https://pypi.org/project/python-osw-validation/
