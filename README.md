@@ -10,6 +10,7 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 
 ## What this package does?
 
+
 - It unzip the provided zip files
 - Check for the required nodes and edges geojson files inside the unzipped folder
 - Validate each file (nodes, edges and points) against schema, schema can be found here
