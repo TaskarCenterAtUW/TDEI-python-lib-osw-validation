@@ -1,5 +1,12 @@
 # Change log
 
+### 0.2.11
+
+- Fixed [BUG-2065](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/2065/)
+- Added functionality to catch serialization errors
+- Added unit test cases for that
+- Added test file `test_serialization_error.zip` to test the serialization error
+
 ### 0.2.10
 
 - Added limit the message error when u_id and v_id are missing

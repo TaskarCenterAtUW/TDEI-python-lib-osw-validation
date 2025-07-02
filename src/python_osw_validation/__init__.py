@@ -161,12 +161,30 @@ class OSWValidation:
             # Validate OSW external extensions
             for file in validator.externalExtensions:
                 file_path = os.path.join(file)
+                file_name = os.path.basename(file)
                 extensionFile = gpd.read_file(file_path)
                 invalid_geojson = extensionFile[extensionFile.is_valid == False]
                 is_valid = len(invalid_geojson) == 0
                 if not is_valid:
-                    self.errors.append(
-                        f"Invalid geometries found in extension file {file}, list of invalid geometries: {invalid_geojson.to_json()}")
+                    try:
+                        # Safely extract invalid _id or fallback to index if _id is missing
+                        invalid_ids = list(set(invalid_geojson.get('_id', invalid_geojson.index)))
+                        num_invalid = len(invalid_ids)
+                        limit = min(num_invalid, 20)
+                        displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
+                        self.errors.append(
+                            f"Invalid geometries found in extension file `{file_name}`. Showing {limit if num_invalid > 20 else 'all'} of {num_invalid} invalid geometry IDs: {displayed_invalid}"
+                        )
+                    except Exception as e:
+                        self.errors.append(f"Invalid features found in `{file_name}`, but failed to extract IDs: {e}")
+
+                # Optional: Test serializability of extension file
+                try:
+                    for idx, row in extensionFile.drop(columns='geometry').iterrows():
+                        json.dumps(row.to_dict())
+                except Exception as e:
+                    self.errors.append(f"Extension file `{file_name}` has non-serializable properties: {e}")
+                    break
 
             if self.errors:
                 return ValidationResult(False, self.errors)
