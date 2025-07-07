@@ -30,6 +30,7 @@ class TestOSWValidation(unittest.TestCase):
         self.invalid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.invalid.zip')
         self.valid_osw_file = os.path.join(ASSETS_PATH, 'wa.bellevue.zip')
         self.invalid_v_id_file = os.path.join(ASSETS_PATH, '4151.zip')
+        self.serialization_file = os.path.join(ASSETS_PATH, 'test_serialization_error.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
 
@@ -226,6 +227,13 @@ class TestOSWValidation(unittest.TestCase):
         result = validation.validate()
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.errors)
+
+    def test_invalid_serialization_file(self):
+        validation = OSWValidation(zipfile_path=self.serialization_file)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        error_message = next((err for err in result.errors if 'non-serializable' in err.lower()), None)
 
     def test_unmatched_ids_limited_to_20(self):
         validation = OSWValidation(zipfile_path=self.invalid_v_id_file)
