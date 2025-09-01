@@ -1,0 +1,2280 @@
+{
+  "title": "root",
+  "type": "object",
+  "required": [
+    "type",
+    "features"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "A field for the schema id.",
+      "enum": [
+        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json"
+      ],
+      "type": "string"
+    },
+    "dataSource": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "dataTimestamp": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "type": {
+      "title": "Feature Collection",
+      "type": "string",
+      "default": "FeatureCollection",
+      "enum": [
+        "FeatureCollection"
+      ]
+    },
+    "features": {
+      "title": "features array",
+      "type": "array",
+      "minItems": 1,
+      "additionalItems": false,
+      "items": {
+        "title": "FeatureObject",
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "title": "FeatureType",
+            "type": "string",
+            "default": "Feature",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "geometry": {
+            "title": "geometryObject",
+            "type": "object",
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "title": "GeometryType",
+                "type": "string",
+                "default": "LineString",
+                "enum": [
+                  "LineString"
+                ]
+              },
+              "coordinates": {
+                "title": "coordinates",
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "array",
+                  "additionalItems": false,
+                  "items": [
+                    {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180
+                    },
+                    {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "properties": {
+            "title": "propertiesObject",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "_u_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "_v_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                "type": "string"
+              },
+              "foot": {
+                "description": "A field that indicates whether an edge can be used by pedestrians.",
+                "enum": [
+                  "designated",
+                  "destination",
+                  "no",
+                  "permissive",
+                  "private",
+                  "use_sidepath",
+                  "yes"
+                ],
+                "type": "string"
+              },
+              "highway": {
+                "enum": [
+                  "service",
+                  "footway",
+                  "living_street",
+                  "pedestrian",
+                  "primary",
+                  "residential",
+                  "secondary",
+                  "steps",
+                  "tertiary",
+                  "trunk",
+                  "unclassified"
+                ],
+                "type": "string"
+              },
+              "incline": {
+                "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                "maximum": 1,
+                "minimum": -1,
+                "type": "number"
+              },
+              "length": {
+                "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                "maximum": 5000,
+                "minimum": 0,
+                "type": "number"
+              },
+              "name": {
+                "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                "type": "string"
+              },
+              "service": {
+                "enum": [
+                  "alley",
+                  "driveway",
+                  "parking_aisle"
+                ],
+                "type": "string"
+              },
+              "surface": {
+                "description": "A field for the surface material of the path.",
+                "enum": [
+                  "asphalt",
+                  "concrete",
+                  "dirt",
+                  "grass",
+                  "grass_paver",
+                  "gravel",
+                  "paved",
+                  "paving_stones",
+                  "unpaved"
+                ],
+                "type": "string"
+              },
+              "width": {
+                "description": "A field for width of an entity in meters.",
+                "maximum": 500,
+                "minimum": 0,
+                "type": "number"
+              },
+              "crossing:markings": {
+                "description": "A field for markings on the ground which are meant to draw attention to the area where pedestrians are to cross the road.",
+                "enum": [
+                  "dashes",
+                  "dots",
+                  "ladder",
+                  "ladder:paired",
+                  "ladder:skewed",
+                  "lines",
+                  "lines:paired",
+                  "lines:rainbow",
+                  "no",
+                  "pictograms",
+                  "rainbow",
+                  "skewed",
+                  "surface",
+                  "yes",
+                  "zebra",
+                  "zebra:bicolour",
+                  "zebra:double",
+                  "zebra:paired",
+                  "zebra:rainbow"
+                ],
+                "type": "string"
+              },
+              "footway": {
+                "enum": [
+                  "crossing",
+                  "sidewalk",
+                  "traffic_island"
+                ],
+                "type": "string"
+              },
+              "barrier": {
+                "enum": [
+                  "fence"
+                ],
+                "type": "string"
+              },
+              "climb": {
+                "description": "A field for the climb direction of steps. You can use \"up\" or \"down\" to indicate the direction of the climb relative to the direction of the edge.",
+                "enum": [
+                  "down",
+                  "up"
+                ],
+                "type": "string"
+              },
+              "step_count": {
+                "description": "A field for number of steps in stairs.",
+                "maximum": 500,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "_id"
+            ],
+            "patternProperties": {
+              "^ext:": {}
+            },
+            "dependencies": {
+              "description": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "foot": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "incline": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "length": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "barrier"
+                        ],
+                        "properties": {
+                          "barrier": {
+                            "type": "string",
+                            "const": "fence"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "surface": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "width": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "alley"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "crossing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "driveway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "living_street"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "service"
+                        ],
+                        "properties": {
+                          "service": {
+                            "type": "string",
+                            "const": "parking_aisle"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "pedestrian"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "primary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "residential"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "secondary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "service"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "sidewalk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "steps"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "tertiary"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "footway"
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "footway"
+                        ],
+                        "properties": {
+                          "footway": {
+                            "type": "string",
+                            "const": "traffic_island"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "trunk"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "required": [
+                          "highway"
+                        ],
+                        "properties": {
+                          "highway": {
+                            "type": "string",
+                            "const": "unclassified"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "crossing:markings": {
+                "allOf": [
+                  {
+                    "required": [
+                      "highway"
+                    ],
+                    "properties": {
+                      "highway": {
+                        "type": "string",
+                        "const": "footway"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "footway"
+                    ],
+                    "properties": {
+                      "footway": {
+                        "type": "string",
+                        "const": "crossing"
+                      }
+                    }
+                  }
+                ]
+              },
+              "climb": {
+                "allOf": [
+                  {
+                    "required": [
+                      "highway"
+                    ],
+                    "properties": {
+                      "highway": {
+                        "type": "string",
+                        "const": "steps"
+                      }
+                    }
+                  }
+                ]
+              },
+              "step_count": {
+                "allOf": [
+                  {
+                    "required": [
+                      "highway"
+                    ],
+                    "properties": {
+                      "highway": {
+                        "type": "string",
+                        "const": "steps"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
