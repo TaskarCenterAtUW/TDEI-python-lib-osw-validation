@@ -1,0 +1,202 @@
+{
+  "title": "root",
+  "type": "object",
+  "required": [
+    "type",
+    "features"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "A field for the schema id.",
+      "enum": [
+        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json"
+      ],
+      "type": "string"
+    },
+    "dataSource": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "dataTimestamp": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "type": {
+      "title": "Feature Collection",
+      "type": "string",
+      "default": "FeatureCollection",
+      "enum": [
+        "FeatureCollection"
+      ]
+    },
+    "features": {
+      "title": "features array",
+      "type": "array",
+      "minItems": 1,
+      "additionalItems": false,
+      "items": {
+        "title": "FeatureObject",
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "title": "FeatureType",
+            "type": "string",
+            "default": "Feature",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "geometry": {
+            "title": "geometryObject",
+            "type": "object",
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "title": "GeometryType",
+                "type": "string",
+                "default": "Point",
+                "enum": [
+                  "Point"
+                ]
+              },
+              "coordinates": {
+                "type": "array",
+                "additionalItems": false,
+                "items": [
+                  {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  }
+                ]
+              }
+            }
+          },
+          "properties": {
+            "title": "propertiesObject",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "amenity": {
+                "enum": [
+                  "bench",
+                  "waste_basket"
+                ],
+                "type": "string"
+              },
+              "barrier": {
+                "enum": [
+                  "bollard",
+                  "kerb"
+                ],
+                "type": "string"
+              },
+              "kerb": {
+                "enum": [
+                  "lowered",
+                  "flush",
+                  "raised",
+                  "rolled"
+                ],
+                "type": "string"
+              },
+              "tactile_paving": {
+                "description": "A field for whether a curb has a tactile (textured) surface. Tactile paving is a system of textured ground surface indicators found on footpaths, stairs and public transportation platforms to assist pedestrians who are blind or visually impaired. A tactile paving area has a surface that is easy to detect using a long cane, typically because it is rougher than the surrounding surface area or has an embossed pattern.",
+                "enum": [
+                  "contrasted",
+                  "no",
+                  "primitive",
+                  "yes"
+                ],
+                "type": "string"
+              },
+              "emergency": {
+                "enum": [
+                  "fire_hydrant"
+                ],
+                "type": "string"
+              },
+              "man_made": {
+                "enum": [
+                  "manhole"
+                ],
+                "type": "string"
+              },
+              "power": {
+                "enum": [
+                  "pole"
+                ],
+                "type": "string"
+              },
+              "highway": {
+                "enum": [
+                  "street_lamp"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "_id"
+            ],
+            "patternProperties": {
+              "^ext:": {}
+            },
+            "dependencies": {
+              "kerb": {
+                "allOf": [
+                  {
+                    "required": [
+                      "barrier"
+                    ],
+                    "properties": {
+                      "barrier": {
+                        "type": "string",
+                        "const": "kerb"
+                      }
+                    }
+                  }
+                ]
+              },
+              "tactile_paving": {
+                "allOf": [
+                  {
+                    "required": [
+                      "barrier"
+                    ],
+                    "properties": {
+                      "barrier": {
+                        "type": "string",
+                        "const": "kerb"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

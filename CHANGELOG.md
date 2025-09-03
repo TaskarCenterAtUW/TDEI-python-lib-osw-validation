@@ -1,5 +1,31 @@
 # Change log
 
+### 0.2.12
+
+#### Added
+- Per-geometry schema support: auto-picks Point/LineString/Polygon schemas with sensible defaults.
+- Structured per-feature **issues** output (former “fixme”): one best, human-friendly message per feature.
+- Friendly error formatter:
+  - Compacts `Enum` errors.
+  - Summarizes `anyOf` by unioning required keys → “must include one of: …”.
+- `_feature_index_from_error()` to reliably extract `feature_index` from `jsonschema_rs` error paths.
+- `_get_colset()` utility for safe set extraction with diagnostics for missing columns.
+- Unit tests covering helpers, schema selection, and issues aggregation.
+
+#### Changed
+- `validate()` now **streams** `jsonschema_rs` errors; legacy `errors` list remains but is capped by `max_errors`.
+- `ValidationResult` now includes `issues`.
+- Schema selection prefers geometry from the first feature; falls back to filename heuristics (`nodes/points`, `edges/lines`, `zones/polygons`).
+
+#### Fixed
+- Robust GeoJSON/extension handling:
+  - Safe fallback to index when `_id` is missing.
+  - Non-serializable property detection in extensions (with clear messages).
+- Safer flattening of `_w_id` (list-like) for zone validations.
+
+#### Migration Notes
+- Prefer consuming `ValidationResult.issues` for per-feature UX and tooling.
+
 ### 0.2.11
 
 - Fixed [BUG-2065](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/2065/)
