@@ -1,5 +1,8 @@
 # Change log
 
+### 0.2.13
+- Updated Schema
+
 ### 0.2.12
 
 #### Added
