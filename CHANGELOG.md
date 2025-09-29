@@ -1,5 +1,11 @@
 # Change log
 
+### 0.2.14
+- Improved GeoJSON parse error reporting with detailed file, line, and column context.
+- Added unit tests covering JSON parsing and file read failure scenarios.
+- Capped duplicate `_id` validation messages default it to first 20 values while reporting the total duplicate count to avoid excessively large issue payloads.
+- Added a new unit test that verifies duplicate ID logging trims the displayed IDs to 20 while reporting the total number of duplicates.
+
 ### 0.2.13
 - Updated Schema
 
