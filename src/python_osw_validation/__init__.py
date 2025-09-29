@@ -202,8 +202,15 @@ class OSWValidation:
                     continue
                 is_valid, duplicates = self.are_ids_unique(gdf)
                 if not is_valid:
+                    total_duplicates = len(duplicates)
+                    displayed = ', '.join(map(str, duplicates[:max_errors]))
+                    if total_duplicates > max_errors:
+                        message = (f"Duplicate _id's found in {osw_file}: showing first {max_errors} "
+                                   f"of {total_duplicates} duplicates: {displayed}")
+                    else:
+                        message = f"Duplicate _id's found in {osw_file}: {displayed}"
                     self.log_errors(
-                        message=f"Duplicate _id's found in {osw_file} : {duplicates}",
+                        message=message,
                         filename=osw_file,
                         feature_index=None
                     )
@@ -238,11 +245,11 @@ class OSWValidation:
                 if unmatched:
                     unmatched_list = list(unmatched)
                     num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, 20)
+                    limit = min(num_unmatched, max_errors)
                     displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                     self.log_errors(
                         message=(f"All _u_id's in edges should be part of _id's mentioned in nodes. "
-                                 f"Showing {'20' if num_unmatched > 20 else 'all'} out of {num_unmatched} "
+                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _u_id's: {displayed_unmatched}"),
                         filename='All',
                         feature_index=None
@@ -253,11 +260,11 @@ class OSWValidation:
                 if unmatched:
                     unmatched_list = list(unmatched)
                     num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, 20)
+                    limit = min(num_unmatched, max_errors)
                     displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                     self.log_errors(
                         message=(f"All _v_id's in edges should be part of _id's mentioned in nodes. "
-                                 f"Showing {'20' if num_unmatched > 20 else 'all'} out of {num_unmatched} "
+                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _v_id's: {displayed_unmatched}"),
                         filename='All',
                         feature_index=None
@@ -268,11 +275,11 @@ class OSWValidation:
                 if unmatched:
                     unmatched_list = list(unmatched)
                     num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, 20)
+                    limit = min(num_unmatched, max_errors)
                     displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
                     self.log_errors(
                         message=(f"All _w_id's in zones should be part of _id's mentioned in nodes. "
-                                 f"Showing {'20' if num_unmatched > 20 else 'all'} out of {num_unmatched} "
+                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _w_id's: {displayed_unmatched}"),
                         filename='All',
                         feature_index=None
@@ -295,10 +302,10 @@ class OSWValidation:
                     ids_series = invalid_geojson['_id'] if '_id' in invalid_geojson.columns else invalid_geojson.index
                     invalid_ids = list(set(ids_series))
                     num_invalid = len(invalid_ids)
-                    limit = min(num_invalid, 20)
+                    limit = min(num_invalid, max_errors)
                     displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
                     self.log_errors(
-                        message=(f"Showing {'20' if num_invalid > 20 else 'all'} out of {num_invalid} "
+                        message=(f"Showing {max_errors if num_invalid > max_errors else 'all'} out of {num_invalid} "
                                  f"invalid {osw_file} geometries, id's of invalid geometries: {displayed_invalid}"),
                         filename='All',
                         feature_index=None
@@ -323,11 +330,11 @@ class OSWValidation:
                     try:
                         invalid_ids = list(set(invalid_geojson.get('_id', invalid_geojson.index)))
                         num_invalid = len(invalid_ids)
-                        limit = min(num_invalid, 20)
+                        limit = min(num_invalid, max_errors)
                         displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
                         self.log_errors(
                             message=(f"Invalid geometries found in extension file `{file_name}`. "
-                                     f"Showing {limit if num_invalid > 20 else 'all'} of {num_invalid} "
+                                     f"Showing {max_errors if num_invalid > max_errors else 'all'} of {num_invalid} "
                                      f"invalid geometry IDs: {displayed_invalid}"),
                             filename=file_name,
                             feature_index=None
@@ -388,8 +395,28 @@ class OSWValidation:
             gc.collect()
 
     def load_osw_file(self, graph_geojson_path: str) -> Dict[str, Any]:
-        with open(graph_geojson_path, 'r') as file:
-            return json.load(file)
+        try:
+            with open(graph_geojson_path, 'r') as file:
+                return json.load(file)
+        except json.JSONDecodeError as e:
+            filename = os.path.basename(graph_geojson_path)
+            self.log_errors(
+                message=(
+                    f"Failed to parse '{filename}' as valid JSON. "
+                    f"{e.msg} (line {e.lineno}, column {e.colno}, char {e.pos})."
+                ),
+                filename=filename,
+                feature_index=None,
+            )
+            raise
+        except OSError as e:
+            filename = os.path.basename(graph_geojson_path)
+            self.log_errors(
+                message=f"Unable to read file '{filename}': {e.strerror or e}",
+                filename=filename,
+                feature_index=None,
+            )
+            raise
 
     def validate_osw_errors(self, file_path: str, max_errors: int) -> bool:
         """Validate one OSW GeoJSON against the appropriate schema (streaming).
@@ -399,7 +426,12 @@ class OSWValidation:
           before returning, pushes a single human-friendly message per feature
           into `self.issues` (like your sample: "must include one of: ...").
         """
-        geojson_data = self.load_osw_file(file_path)
+        try:
+            geojson_data = self.load_osw_file(file_path)
+        except json.JSONDecodeError:
+            return False
+        except OSError:
+            return False
         schema_path = self.pick_schema_for_file(file_path, geojson_data)
         schema = self.load_osw_schema(schema_path)
         validator = jsonschema_rs.Draft7Validator(schema)

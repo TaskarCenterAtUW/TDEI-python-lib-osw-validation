@@ -1,4 +1,6 @@
+import json
 import os
+import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 import geopandas as gpd
@@ -172,6 +174,83 @@ class TestOSWValidationExtras(unittest.TestCase):
                 shown_ids = [x.strip() for x in displayed.split(",")]
                 self.assertLessEqual(len(shown_ids), 20)
 
+    def test_load_osw_file_logs_json_decode_error(self):
+        """Invalid JSON should surface a detailed message with location context."""
+        validator = OSWValidation(zipfile_path="dummy.zip")
+        with tempfile.NamedTemporaryFile("w", suffix=".geojson", delete=False) as tmp:
+            tmp.write('{"features": [1, }')
+            bad_path = tmp.name
+        try:
+            with self.assertRaises(json.JSONDecodeError):
+                validator.load_osw_file(bad_path)
+        finally:
+            os.unlink(bad_path)
+
+        self.assertTrue(any("Failed to parse" in e for e in (validator.errors or [])),
+                        f"Errors were: {validator.errors}")
+        message = validator.errors[-1]
+        basename = os.path.basename(bad_path)
+        self.assertIn(basename, message)
+        self.assertIn("line", message)
+        self.assertIn("column", message)
+
+        issue = validator.issues[-1]
+        self.assertEqual(issue["filename"], basename)
+        self.assertIsNone(issue["feature_index"])
+        self.assertEqual(issue["error_message"], message)
+
+    def test_load_osw_file_logs_os_error(self):
+        """Missing files should log a readable OS error message."""
+        validator = OSWValidation(zipfile_path="dummy.zip")
+        missing_path = os.path.join(tempfile.gettempdir(), "nonexistent_osw_file.geojson")
+        if os.path.exists(missing_path):
+            os.unlink(missing_path)
+
+        with self.assertRaises(OSError):
+            validator.load_osw_file(missing_path)
+
+        self.assertTrue(any("Unable to read file" in e for e in (validator.errors or [])),
+                        f"Errors were: {validator.errors}")
+        message = validator.errors[-1]
+        basename = os.path.basename(missing_path)
+        self.assertIn(basename, message)
+        self.assertIn("Unable to read file", message)
+
+        issue = validator.issues[-1]
+        self.assertEqual(issue["filename"], basename)
+        self.assertIsNone(issue["feature_index"])
+        self.assertEqual(issue["error_message"], message)
+
+    def test_validate_reports_json_decode_error(self):
+        """Full validation flow should surface parse errors before schema checks."""
+        with tempfile.NamedTemporaryFile("w", suffix=".geojson", delete=False) as tmp:
+            tmp.write('{"type": "FeatureCollection", "features": [1, }')
+            bad_path = tmp.name
+
+        try:
+            with patch(_PATCH_ZIP) as PZip, patch(_PATCH_EV) as PVal:
+                z = MagicMock()
+                z.extract_zip.return_value = "/tmp/extracted"
+                z.remove_extracted_files.return_value = None
+                PZip.return_value = z
+
+                PVal.return_value = self._fake_validator([bad_path])
+
+                result = OSWValidation(zipfile_path="dummy.zip").validate()
+
+            self.assertFalse(result.is_valid)
+            message = next((e for e in (result.errors or []) if "Failed to parse" in e), None)
+            self.assertIsNotNone(message, f"Expected parse error message. Errors: {result.errors}")
+            basename = os.path.basename(bad_path)
+            self.assertIn(basename, message)
+            self.assertIn("line", message)
+
+            issue = next((i for i in (result.issues or []) if i["filename"] == basename), None)
+            self.assertIsNotNone(issue, f"Issues were: {result.issues}")
+            self.assertEqual(issue["error_message"], message)
+        finally:
+            os.unlink(bad_path)
+
     def test_duplicate_ids_detection(self):
         """Duplicates inside a single file are reported."""
         fake_files = ["/tmp/nodes.geojson"]
@@ -190,7 +269,35 @@ class TestOSWValidationExtras(unittest.TestCase):
 
             res = OSWValidation(zipfile_path="dummy.zip").validate()
             self.assertFalse(res.is_valid)
-            self.assertTrue(any("Duplicate _id's found in nodes" in e for e in (res.errors or [])))
+            msg = next((e for e in (res.errors or []) if "Duplicate _id's found in nodes" in e), None)
+            self.assertEqual(msg, "Duplicate _id's found in nodes: 2")
+
+    def test_duplicate_ids_detection_is_limited_to_20(self):
+        """Duplicate messages cap the number of displayed IDs."""
+        fake_files = ["/tmp/nodes.geojson"]
+        duplicate_ids = [f"id{i}" for i in range(25) for _ in (0, 1)]  # 25 unique duplicates
+        nodes = self._gdf_nodes(duplicate_ids)
+
+        with patch(_PATCH_ZIP) as PZip, \
+                patch(_PATCH_EV) as PVal, \
+                patch(_PATCH_VALIDATE, return_value=True), \
+                patch(_PATCH_READ_FILE, return_value=nodes), \
+                patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            PZip.return_value = z
+            PVal.return_value = self._fake_validator(fake_files)
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+            self.assertFalse(res.is_valid)
+            msg = next((e for e in (res.errors or []) if "Duplicate _id's found in nodes" in e), None)
+            self.assertIsNotNone(msg, "Expected duplicate-id error not found")
+            self.assertIn("showing first 20 of 25 duplicates", msg)
+            displayed = msg.split("duplicates:")[-1].strip()
+            shown_ids = [part.strip() for part in displayed.split(",") if part.strip()]
+            self.assertLessEqual(len(shown_ids), 20)
+            expected_ids = [f"id{i}" for i in range(20)]
+            self.assertEqual(shown_ids, expected_ids)
 
     def test_pick_schema_by_geometry_and_by_filename(self):
         """Point/LineString/Polygon ⇒ proper schema; filename fallback when features empty."""
