@@ -1,5 +1,10 @@
 # Change log
 
+### 0.2.15
+- Update the base schema to make the $schema key is required
+- Added unit test cases for that
+
+
 ### 0.2.14
 - Improved GeoJSON parse error reporting with detailed file, line, and column context.
 - Added unit tests covering JSON parsing and file read failure scenarios.

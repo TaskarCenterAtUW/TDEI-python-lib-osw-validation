@@ -2,6 +2,7 @@
   "title": "root",
   "type": "object",
   "required": [
+    "$schema",
     "type",
     "features"
   ],
