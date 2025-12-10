@@ -29,6 +29,24 @@ OSW_DATASET_FILES = {
     }
 }
 
+ALLOWED_OSW_03_FILENAMES = (
+    "opensidewalks.edges.geojson",
+    "opensidewalks.lines.geojson",
+    "opensidewalks.nodes.geojson",
+    "opensidewalks.points.geojson",
+    "opensidewalks.polygons.geojson",
+    "opensidewalks.zones.geojson",
+)
+
+_FILENAME_TO_KEY = {
+    "opensidewalks.edges.geojson": "edges",
+    "opensidewalks.lines.geojson": "lines",
+    "opensidewalks.nodes.geojson": "nodes",
+    "opensidewalks.points.geojson": "points",
+    "opensidewalks.polygons.geojson": "polygons",
+    "opensidewalks.zones.geojson": "zones",
+}
+
 
 class ExtractedDataValidator:
     def __init__(self, extracted_dir: str):
@@ -45,14 +63,40 @@ class ExtractedDataValidator:
 
         # Look for required files at the root level
         geojson_files = glob.glob(os.path.join(self.extracted_dir, '*.geojson'))
-
-        # If not found at the root, check inside folders
-        if not geojson_files:
-            geojson_files = glob.glob(os.path.join(self.extracted_dir, '*', '*.geojson'))
+        nested_files = glob.glob(os.path.join(self.extracted_dir, '*', '*.geojson'))
+        for f in nested_files:
+            if f not in geojson_files:
+                geojson_files.append(f)
 
         if not geojson_files:
             self.error = 'No .geojson files found in the specified directory or its subdirectories.'
             return False
+
+        basenames = [os.path.basename(f) for f in geojson_files]
+        is_osw_03 = any(name.startswith("opensidewalks.") for name in basenames)
+
+        if is_osw_03:
+            invalid_basenames = [bn for bn in basenames if bn not in ALLOWED_OSW_03_FILENAMES]
+            if invalid_basenames:
+                allowed_fmt = ", ".join(ALLOWED_OSW_03_FILENAMES)
+                self.error = f'Dataset contains non-standard file names. The only allowed file names are {{{allowed_fmt}}}'
+                return False
+
+            duplicate_keys = []
+            for filename in ALLOWED_OSW_03_FILENAMES:
+                occurrences = [f for f in geojson_files if os.path.basename(f) == filename]
+                if len(occurrences) > 1:
+                    duplicate_keys.append(_FILENAME_TO_KEY.get(filename, filename))
+                elif len(occurrences) == 1:
+                    self.files.append(occurrences[0])
+
+            if duplicate_keys:
+                self.error = f'Multiple .geojson files of the same type found: {", ".join(duplicate_keys)}.'
+                return False
+
+            self.externalExtensions.extend([item for item in geojson_files if item not in self.files])
+            gc.collect()
+            return True
 
         required_files = [key for key, value in OSW_DATASET_FILES.items() if value['required']]
         optional_files = [key for key, value in OSW_DATASET_FILES.items() if not value['required']]
@@ -106,7 +150,7 @@ class ExtractedDataValidator:
 
         finally:
             # Cleanup large lists and call garbage collector
-            del geojson_files, required_files, optional_files, missing_files, duplicate_files
+            del geojson_files, basenames, required_files, optional_files, missing_files, duplicate_files
             gc.collect()
 
         return True

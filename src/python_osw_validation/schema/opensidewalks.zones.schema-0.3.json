@@ -1,17 +1,20 @@
 {
   "title": "root",
   "type": "object",
+  "$id": "https://sidewalks.washington.edu/opensidewalks/0.3/zones.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "required": [
-    "$schema",
     "type",
-    "features"
+    "features",
+    "$schema"
   ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
       "description": "A field for the schema id.",
       "enum": [
-        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json"
+        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+        "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json"
       ],
       "type": "string"
     },
@@ -57,6 +60,7 @@
               "minItems": 4,
               "items": {
                 "type": "array",
+                "minItems": 2,
                 "additionalItems": false,
                 "items": [
                   {
@@ -68,6 +72,9 @@
                     "type": "number",
                     "minimum": -90,
                     "maximum": 90
+                  },
+                  {
+                    "type": "number"
                   }
                 ]
               }
@@ -133,6 +140,7 @@
                   "minItems": 4,
                   "items": {
                     "type": "array",
+                    "minItems": 2,
                     "additionalItems": false,
                     "items": [
                       {
@@ -144,6 +152,9 @@
                         "type": "number",
                         "minimum": -90,
                         "maximum": 90
+                      },
+                      {
+                        "type": "number"
                       }
                     ]
                   }
@@ -158,119 +169,6 @@
             "properties": {
               "_id": {
                 "minLength": 1,
-                "type": "string"
-              },
-              "building": {
-                "description": "A field for markings a given object as a building.",
-                "enum": [
-                  "allotment_house",
-                  "apartments",
-                  "bakehouse",
-                  "barn",
-                  "barracks",
-                  "beach_hut",
-                  "boathouse",
-                  "bridge",
-                  "bungalow",
-                  "bunker",
-                  "cabin",
-                  "carport",
-                  "castle",
-                  "cathedral",
-                  "chapel",
-                  "church",
-                  "civic",
-                  "college",
-                  "commercial",
-                  "conservatory",
-                  "construction",
-                  "container",
-                  "cowshed",
-                  "detached",
-                  "digester",
-                  "dormitory",
-                  "farm",
-                  "farm_auxiliary",
-                  "fire_station",
-                  "garage",
-                  "garages",
-                  "gatehouse",
-                  "ger",
-                  "government",
-                  "grandstand",
-                  "greenhouse",
-                  "guardhouse",
-                  "hangar",
-                  "hospital",
-                  "hotel",
-                  "house",
-                  "houseboat",
-                  "hut",
-                  "industrial",
-                  "kindergarten",
-                  "kingdom_hall",
-                  "kiosk",
-                  "livestock",
-                  "military",
-                  "monastery",
-                  "mosque",
-                  "museum",
-                  "office",
-                  "outbuilding",
-                  "pagoda",
-                  "parking",
-                  "pavilion",
-                  "presbytery",
-                  "public",
-                  "quonset_hut",
-                  "religious",
-                  "residential",
-                  "retail",
-                  "riding_hall",
-                  "roof",
-                  "ruins",
-                  "school",
-                  "semidetached_house",
-                  "service",
-                  "shed",
-                  "shrine",
-                  "silo",
-                  "slurry_tank",
-                  "sports_centre",
-                  "sports_hall",
-                  "stable",
-                  "stadium",
-                  "static_caravan",
-                  "stilt_house",
-                  "storage_tank",
-                  "sty",
-                  "supermarket",
-                  "synagogue",
-                  "tech_cab",
-                  "temple",
-                  "tent",
-                  "terrace",
-                  "toilets",
-                  "tower",
-                  "train_station",
-                  "transformer_tower",
-                  "transportation",
-                  "tree_house",
-                  "trullo",
-                  "university",
-                  "warehouse",
-                  "water_tower",
-                  "windmill",
-                  "yes"
-                ],
-                "type": "string"
-              },
-              "name": {
-                "description": "A field for a designated name for an entity. Example: an official name for a trail.",
-                "type": "string"
-              },
-              "opening_hours": {
-                "description": "A field for the opening hours of an entity. The value is in OpenStreetMap syntax for the opening_hours tag. See [OpenStreetMap specification](https://wiki.openstreetmap.org/wiki/Key:opening_hours/specification) on the formatting for this field.",
                 "type": "string"
               },
               "_w_id": {
@@ -302,6 +200,10 @@
                 ],
                 "type": "string"
               },
+              "name": {
+                "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                "type": "string"
+              },
               "surface": {
                 "description": "A field for the surface material of the path.",
                 "enum": [
@@ -318,59 +220,83 @@
                 "type": "string"
               }
             },
-            "required": [
-              "_id"
-            ],
             "patternProperties": {
-              "^ext:": {}
+              "^ext:.*$": {}
             },
-            "dependencies": {
-              "description": {
-                "allOf": [
-                  {
-                    "required": [
-                      "highway"
+            "required": [
+              "_id",
+              "_w_id",
+              "highway"
+            ],
+            "anyOf": [
+              {
+                "title": "PedestrianZoneFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_w_id": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
                     ],
-                    "properties": {
-                      "highway": {
-                        "type": "string",
-                        "const": "pedestrian"
-                      }
-                    }
-                  }
-                ]
-              },
-              "foot": {
-                "allOf": [
-                  {
-                    "required": [
-                      "highway"
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "pedestrian"
                     ],
-                    "properties": {
-                      "highway": {
-                        "type": "string",
-                        "const": "pedestrian"
-                      }
-                    }
-                  }
-                ]
-              },
-              "surface": {
-                "allOf": [
-                  {
-                    "required": [
-                      "highway"
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
                     ],
-                    "properties": {
-                      "highway": {
-                        "type": "string",
-                        "const": "pedestrian"
-                      }
-                    }
+                    "type": "string"
                   }
-                ]
+                },
+                "required": [
+                  "_id",
+                  "_w_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
               }
-            }
+            ]
           }
         }
       }

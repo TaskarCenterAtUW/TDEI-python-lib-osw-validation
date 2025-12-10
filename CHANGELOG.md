@@ -1,5 +1,11 @@
 # Change log
 
+### 0.3.0
+- Default to OSW 0.3 dataset-specific schemas (edges, lines, nodes, points, polygons, zones) with filename-driven selection; removed legacy monolithic/geometry schema files.
+- Enforce the six canonical OSW 0.3 filenames inside datasets; reject non-standard names and detect duplicates/missing required files (with new unit tests).
+- Validation now ignores `$schema` hints and does not fall back to geometry typing; line schema is the final fallback when filenames give no hint.
+- Expanded test coverage for extension read failures, invalid extension ID extraction, `_w_id` missing in zones, cleanup edge cases, and required-file detection.
+
 ### 0.2.15
 - Update the base schema to make the $schema key is required
 - Added unit test cases for that

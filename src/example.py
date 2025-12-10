@@ -7,7 +7,7 @@ VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid.zip')
 INVALID_ZIP_FILE = os.path.join(ASSETS_DIR, '4151.zip')
 INVALID_VANCOUVER_ZIP_FILE = os.path.join(ASSETS_DIR, 'vancouver-dataset.zip')
 SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_osw_validation/schema')
-SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema.json')
+SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema-0.3.json')
 
 
 def valid_test_with_provided_schema():

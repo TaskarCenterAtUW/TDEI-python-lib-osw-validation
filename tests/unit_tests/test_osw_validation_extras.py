@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
+import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point, LineString, Polygon
 
@@ -251,6 +252,146 @@ class TestOSWValidationExtras(unittest.TestCase):
         finally:
             os.unlink(bad_path)
 
+    def test_validate_logs_read_file_exception(self):
+        """GeoDataFrame read failures are logged and do not crash."""
+        fake_files = ["/tmp/edges.geojson"]
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE, side_effect=Exception("boom")), \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+            PVal.return_value = self._fake_validator(fake_files)
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Failed to read 'edges.geojson' as GeoJSON: boom" in e for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
+    def test_missing_w_id_logs_error(self):
+        """Zones missing _w_id should log a clear message."""
+        fake_files = ["/tmp/nodes.geojson", "/tmp/zones.geojson"]
+        nodes = self._gdf_nodes([1, 2])
+        # zones without _w_id column
+        polygons = [Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])]
+        zones = gpd.GeoDataFrame({"_id": [10]}, geometry=polygons, crs="EPSG:4326")
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+            PVal.return_value = self._fake_validator(fake_files)
+
+            def _rf(path):
+                b = os.path.basename(path)
+                if "nodes" in b:
+                    return nodes
+                if "zones" in b:
+                    return zones
+                return gpd.GeoDataFrame()
+
+            PRead.side_effect = _rf
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Missing required column '_w_id' in zones." in e for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
+    def test_extension_read_failure_is_logged(self):
+        """Failure reading an extension file should be logged and skipped."""
+        fake_files = ["/tmp/nodes.geojson"]
+        nodes = self._gdf_nodes([1])
+        ext_path = "/tmp/custom.geojson"
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = self._fake_validator(fake_files, external_exts=[ext_path])
+            PVal.return_value = val
+
+            def _rf(path):
+                b = os.path.basename(path)
+                if "nodes" in b:
+                    return nodes
+                if os.path.basename(path) == os.path.basename(ext_path):
+                    raise Exception("boom")
+                return gpd.GeoDataFrame()
+
+            PRead.side_effect = _rf
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Failed to read extension 'custom.geojson' as GeoJSON: boom" in e for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
+    def test_extension_invalid_ids_logging_failure(self):
+        """If invalid extension features exist but id extraction fails, we log gracefully."""
+        ext_path = "/tmp/custom.geojson"
+        fake_files = ["/tmp/nodes.geojson"]
+        nodes = self._gdf_nodes([1])
+
+        invalid_geojson = MagicMock()
+        invalid_geojson.__len__.return_value = 1
+        invalid_geojson.get.side_effect = Exception("explode")
+
+        extension_file = MagicMock()
+        extension_file.__getitem__.return_value = invalid_geojson  # handles extensionFile[extensionFile.is_valid == False]
+        extension_file.is_valid = [False]
+        extension_file.drop.return_value = pd.DataFrame()
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = self._fake_validator(fake_files, external_exts=[ext_path])
+            PVal.return_value = val
+
+            def _rf(path):
+                b = os.path.basename(path)
+                if "nodes" in b:
+                    return nodes
+                if os.path.basename(path) == os.path.basename(ext_path):
+                    return extension_file
+                return gpd.GeoDataFrame()
+
+            PRead.side_effect = _rf
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Invalid features found in `custom.geojson`, but failed to extract IDs: explode" in e
+                            for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
     def test_duplicate_ids_detection(self):
         """Duplicates inside a single file are reported."""
         fake_files = ["/tmp/nodes.geojson"]
@@ -299,33 +440,20 @@ class TestOSWValidationExtras(unittest.TestCase):
             expected_ids = [f"id{i}" for i in range(20)]
             self.assertEqual(shown_ids, expected_ids)
 
-    def test_pick_schema_by_geometry_and_by_filename(self):
-        """Point/LineString/Polygon ⇒ proper schema; filename fallback when features empty."""
+    def test_pick_schema_by_filename_only(self):
+        """Filename drives selection; geometry-only inputs fall back to line schema."""
         v = OSWValidation(zipfile_path="dummy.zip")
-
+        # filename mapping
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), v.dataset_schema_paths["edges"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.points.geojson", {"features": []}), v.dataset_schema_paths["points"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.lines.geojson", {"features": []}), v.dataset_schema_paths["lines"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.polygons.geojson", {"features": []}), v.dataset_schema_paths["polygons"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.zones.geojson", {"features": []}), v.dataset_schema_paths["zones"])
+        # geometry-only (no filename hint) falls back to line schema
         self.assertEqual(
-            v.pick_schema_for_file("/any/path.json", {"features": [{"geometry": {"type": "Point"}}]}),
-            v.point_schema_path,
-        )
-        self.assertEqual(
-            v.pick_schema_for_file("/any/path.json", {"features": [{"geometry": {"type": "LineString"}}]}),
+            v.pick_schema_for_file("/tmp/unknown.geojson", {"features": [{"geometry": {"type": "Point"}}]}),
             v.line_schema_path,
-        )
-        self.assertEqual(
-            v.pick_schema_for_file("/any/path.json", {"features": [{"geometry": {"type": "Polygon"}}]}),
-            v.polygon_schema_path,
-        )
-        self.assertEqual(
-            v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}),
-            v.point_schema_path,
-        )
-        self.assertEqual(
-            v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}),
-            v.line_schema_path,
-        )
-        self.assertEqual(
-            v.pick_schema_for_file("/tmp/my.zones.geojson", {"features": []}),
-            v.polygon_schema_path,
         )
 
     def test_zip_extract_failure_bubbles_as_error(self):
@@ -413,6 +541,12 @@ class TestOSWValidationInternals(unittest.TestCase):
         data = {**data, "geometry": g}
         return gpd.GeoDataFrame(data, geometry="geometry", crs="EPSG:4326")
 
+    def _write_geojson(self, data):
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".geojson", delete=False)
+        json.dump(data, tmp)
+        tmp.close()
+        return tmp.name
+
     # ---------- _get_colset ----------
     def test_get_colset_returns_set_when_column_present(self):
         v = OSWValidation(zipfile_path="dummy.zip")
@@ -441,12 +575,144 @@ class TestOSWValidationInternals(unittest.TestCase):
         s = v._get_colset(None, "_id", "nodes")
         self.assertEqual(s, set())
 
+    def test_get_colset_logs_when_stringify_fails(self):
+        class BadObj:
+            def __hash__(self):
+                raise TypeError("no hash")
+
+            def __str__(self):
+                raise ValueError("no str")
+
+        v = OSWValidation(zipfile_path="dummy.zip")
+        gdf = self._gdf({"meta": [BadObj()]}, geom="Point")
+        s = v._get_colset(gdf, "meta", "nodes")
+        self.assertEqual(s, set())
+        self.assertTrue(any("Could not create set for column 'meta' in nodes." in e for e in (v.errors or [])),
+                        f"Errors were: {v.errors}")
+
+    def test_schema_02_rejects_tree_and_custom(self):
+        base = {
+            "$schema": "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+            "type": "FeatureCollection",
+        }
+
+        def _feature(props):
+            return {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": props,
+            }
+
+        path_tree = self._write_geojson({**base, "features": [_feature({"natural": "tree"})]})
+        v = OSWValidation(zipfile_path="dummy.zip")
+        try:
+            res = v.validate_osw_errors(path_tree, max_errors=5)
+        finally:
+            os.unlink(path_tree)
+        self.assertFalse(res)
+        self.assertTrue(any("0.2 schema does not support Tree coverage" in e for e in (v.errors or [])),
+                        f"Errors were: {v.errors}")
+
+        path_custom = self._write_geojson({**base, "features": [_feature({"type": "Custom Point"})]})
+        v2 = OSWValidation(zipfile_path="dummy.zip")
+        try:
+            res2 = v2.validate_osw_errors(path_custom, max_errors=5)
+        finally:
+            os.unlink(path_custom)
+        self.assertFalse(res2)
+        self.assertTrue(any("0.2 schema does not support Tree coverage" in e for e in (v2.errors or [])),
+                        f"Errors were: {v2.errors}")
+
+        path_wood = self._write_geojson({**base, "features": [_feature({"natural": "wood", "leaf_cycle": "mixed"})]})
+        v3 = OSWValidation(zipfile_path="dummy.zip")
+        try:
+            res3 = v3.validate_osw_errors(path_wood, max_errors=5)
+        finally:
+            os.unlink(path_wood)
+        self.assertFalse(res3)
+        self.assertTrue(any("0.2 schema does not support Tree coverage" in e for e in (v3.errors or [])),
+                        f"Errors were: {v3.errors}")
+
+    def test_schema_03_with_tree_tags_is_allowed(self):
+        base = {
+            "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+            "type": "FeatureCollection",
+        }
+
+        feat = {
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]},
+            "properties": {"natural": "wood", "leaf_cycle": "mixed", "_id": "p1"},
+        }
+        path = self._write_geojson({**base, "features": [feat]})
+
+        class DummyValidator:
+            def __init__(self, *_):
+                pass
+
+            def iter_errors(self, *_):
+                return []
+
+        v = OSWValidation(zipfile_path="dummy.zip")
+        try:
+            with patch("src.python_osw_validation.jsonschema_rs.Draft7Validator", DummyValidator), \
+                 patch.object(OSWValidation, "_contains_disallowed_features_for_02", side_effect=Exception("should_not_call")):
+                res = v.validate_osw_errors(path, max_errors=5)
+        finally:
+            os.unlink(path)
+
+        self.assertTrue(res)
+        self.assertFalse(v.errors)
+
+    def test_cleanup_handles_locals_membership_error(self):
+        """Finalizer should swallow errors when checking locals membership."""
+
+        class BadPath:
+            def __str__(self):
+                return "/tmp/nodes.geojson"
+
+            def __fspath__(self):
+                return "/tmp/nodes.geojson"
+
+            def __hash__(self):
+                raise TypeError("boom")
+
+        fake_files = [BadPath()]
+        nodes = self._gdf({"_id": [1]}, geom="Point")
+
+        class DummyValidator:
+            def __init__(self, files):
+                self.files = files
+                self.externalExtensions = []
+                self.error = "ok"
+
+            def is_valid(self):
+                return True
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE, return_value=nodes), \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            PVal.return_value = DummyValidator(fake_files)
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertTrue(res.is_valid)
+        self.assertIsNone(res.errors)
+
     # ---------- pick_schema_for_file ----------
     def test_pick_schema_by_geometry(self):
         v = OSWValidation(zipfile_path="dummy.zip")
         self.assertEqual(
             v.pick_schema_for_file("/x/y.json", {"features": [{"geometry": {"type": "Point"}}]}),
-            v.point_schema_path,
+            v.line_schema_path,
         )
         self.assertEqual(
             v.pick_schema_for_file("/x/y.json", {"features": [{"geometry": {"type": "LineString"}}]}),
@@ -454,17 +720,39 @@ class TestOSWValidationInternals(unittest.TestCase):
         )
         self.assertEqual(
             v.pick_schema_for_file("/x/y.json", {"features": [{"geometry": {"type": "Polygon"}}]}),
-            v.polygon_schema_path,
+            v.line_schema_path,
+        )
+
+    def test_pick_schema_by_schema_url(self):
+        v = OSWValidation(zipfile_path="dummy.zip")
+        self.assertEqual(
+            v.pick_schema_for_file("/x/nodes.json", {"$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/nodes.schema.json"}),
+            v.dataset_schema_paths["nodes"],
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/x/general.json", {"$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json"}),
+            v.line_schema_path,
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/x/general.json", {"$schema": "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json"}),
+            v.line_schema_path,
         )
 
     def test_pick_schema_filename_fallback(self):
         v = OSWValidation(zipfile_path="dummy.zip")
-        self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}), v.point_schema_path)
-        self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), v.line_schema_path)
-        self.assertEqual(v.pick_schema_for_file("/tmp/my.zones.geojson", {"features": []}), v.polygon_schema_path)
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.points.geojson", {"features": []}), v.dataset_schema_paths["points"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), v.dataset_schema_paths["edges"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.lines.geojson", {"features": []}), v.dataset_schema_paths["lines"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.zones.geojson", {"features": []}), v.dataset_schema_paths["zones"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.polygons.geojson", {"features": []}), v.dataset_schema_paths["polygons"])
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/geometry_only.geojson", {"features": [{"geometry": {"type": "Point"}}]}),
+            v.line_schema_path,
+        )
 
     def test_pick_schema_force_single_schema_override(self):
-        force = "/forced/opensidewalks.schema.json"
+        force = "/forced/opensidewalks.schema-0.3.json"
         v = OSWValidation(zipfile_path="dummy.zip", schema_file_path=force)
         # should always return forced schema when provided
         self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), force)

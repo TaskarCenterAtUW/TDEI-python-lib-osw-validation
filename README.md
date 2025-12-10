@@ -12,7 +12,7 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 
 - It unzip the provided zip files
 - Check for the required nodes and edges geojson files inside the unzipped folder
-- Validate each file (nodes, edges and points) against schema, schema can be found here
+- Validate each file (edges, lines, nodes, points, polygons and zones) against the matching schema (0.3 defaults live in `src/python_osw_validation/schema`)
 - Return true or false according to validation
 - you can check the error if it returned false.
 
