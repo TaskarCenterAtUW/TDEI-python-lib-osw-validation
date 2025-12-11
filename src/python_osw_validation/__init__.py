@@ -12,6 +12,14 @@ from .version import __version__
 from .helpers import _feature_index_from_error, _pretty_message, _rank_for
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
+DEFAULT_DATASET_SCHEMAS = {
+    "edges": os.path.join(SCHEMA_PATH, 'opensidewalks.edges.schema-0.3.json'),
+    "lines": os.path.join(SCHEMA_PATH, 'opensidewalks.lines.schema-0.3.json'),
+    "nodes": os.path.join(SCHEMA_PATH, 'opensidewalks.nodes.schema-0.3.json'),
+    "points": os.path.join(SCHEMA_PATH, 'opensidewalks.points.schema-0.3.json'),
+    "polygons": os.path.join(SCHEMA_PATH, 'opensidewalks.polygons.schema-0.3.json'),
+    "zones": os.path.join(SCHEMA_PATH, 'opensidewalks.zones.schema-0.3.json'),
+}
 
 
 class ValidationResult:
@@ -33,17 +41,18 @@ class ValidationResult:
 
 
 class OSWValidation:
-    default_schema_file_path = os.path.join(SCHEMA_PATH, 'opensidewalks.schema.json')
+    default_schema_file_path_03 = os.path.join(SCHEMA_PATH, 'opensidewalks.schema-0.3.json')
 
     # per-geometry defaults
-    default_point_schema = os.path.join(SCHEMA_PATH, 'Point_schema.json')
-    default_line_schema = os.path.join(SCHEMA_PATH, 'Linestring_schema.json')
-    default_polygon_schema = os.path.join(SCHEMA_PATH, 'Polygon_schema.json')
+    default_point_schema = DEFAULT_DATASET_SCHEMAS['points']
+    default_line_schema = DEFAULT_DATASET_SCHEMAS['edges']
+    default_polygon_schema = DEFAULT_DATASET_SCHEMAS['zones']
 
     def __init__(
             self,
             zipfile_path: str,
             schema_file_path=None,
+            schema_paths: Optional[Dict[str, str]] = None,
             point_schema_path: Optional[str] = None,
             line_schema_path: Optional[str] = None,
             polygon_schema_path: Optional[str] = None,
@@ -57,10 +66,15 @@ class OSWValidation:
         # Legacy single schema (if set, used for all)
         self.schema_file_path = schema_file_path  # may be None
 
+        # Dataset-specific schemas (override via schema_paths)
+        self.dataset_schema_paths = {**DEFAULT_DATASET_SCHEMAS}
+        if schema_paths:
+            self.dataset_schema_paths.update({k: v for k, v in schema_paths.items() if v})
+
         # Per-geometry schemas (with defaults)
-        self.point_schema_path = point_schema_path or self.default_point_schema
-        self.line_schema_path = line_schema_path or self.default_line_schema
-        self.polygon_schema_path = polygon_schema_path or self.default_polygon_schema
+        self.point_schema_path = point_schema_path or self.dataset_schema_paths['points']
+        self.line_schema_path = line_schema_path or self.dataset_schema_paths['edges']
+        self.polygon_schema_path = polygon_schema_path or self.dataset_schema_paths['zones']
 
     # ----------------------------
     # Utilities & helpers
@@ -92,6 +106,45 @@ class OSWValidation:
                 self.log_errors(f"Could not create set for column '{col}' in {filekey}.", filekey, None)
                 return set()
 
+    def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
+        """Return dataset key (edges/nodes/points/lines/polygons/zones) if mentioned in text."""
+        if not text:
+            return None
+        lower = text.lower()
+        aliases = {
+            "edges": ("edge", "edges"),
+            "lines": ("line", "lines", "linestring"),
+            "nodes": ("node", "nodes"),
+            "points": ("point", "points"),
+            "polygons": ("polygon", "polygons", "area"),
+            "zones": ("zone", "zones"),
+        }
+        for key, variants in aliases.items():
+            if any(alias in lower for alias in variants):
+                return key
+        return None
+
+    def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> bool:
+        """Detect Tree coverage or Custom Point/Line/Polygon in legacy 0.2 datasets."""
+        for feat in geojson_data.get("features", []):
+            props = feat.get("properties") or {}
+            val = props.get("natural")
+            if isinstance(val, str) and val.strip().lower() in {"tree", "wood"}:
+                return True
+            if any(k in props for k in ("leaf_cycle", "leaf_type")):
+                return True
+            for k, v in props.items():
+                target = ""
+                if isinstance(v, str):
+                    target = v.lower()
+                elif isinstance(k, str):
+                    target = k.lower()
+                if any(tok in target for tok in ["custom point", "custom_point", "custompoint",
+                                                 "custom line", "custom_line", "customline",
+                                                 "custom polygon", "custom_polygon", "custompolygon"]):
+                    return True
+        return False
+
     # ----------------------------
     # Schema selection
     # ----------------------------
@@ -118,25 +171,12 @@ class OSWValidation:
     def pick_schema_for_file(self, file_path: str, geojson_data: Dict[str, Any]) -> str:
         if self.schema_file_path:
             return self.schema_file_path
-        try:
-            features = geojson_data.get('features', [])
-            if features:
-                gtype = (features[0].get('geometry') or {}).get('type')
-                if gtype == 'Point':
-                    return self.point_schema_path
-                if gtype == 'LineString':
-                    return self.line_schema_path
-                if gtype == 'Polygon':
-                    return self.polygon_schema_path
-        except Exception:
-            pass
-        lower = os.path.basename(file_path).lower()
-        if 'node' in lower or 'point' in lower:
-            return self.point_schema_path
-        if 'edge' in lower or 'line' in lower:
-            return self.line_schema_path
-        if 'zone' in lower or 'polygon' in lower or 'area' in lower:
-            return self.polygon_schema_path
+
+        basename = os.path.basename(file_path)
+        schema_key = self._schema_key_from_text(basename)
+        if schema_key and schema_key in self.dataset_schema_paths:
+            return self.dataset_schema_paths[schema_key]
+
         return self.line_schema_path
 
     # ----------------------------
@@ -432,6 +472,17 @@ class OSWValidation:
             return False
         except OSError:
             return False
+
+        schema_url = geojson_data.get('$schema')
+        if isinstance(schema_url, str) and '0.2/schema.json' in schema_url:
+            if self._contains_disallowed_features_for_02(geojson_data):
+                self.log_errors(
+                    message="0.2 schema does not support Tree coverage, Custom Point, Custom Line, and Custom Polygon",
+                    filename=os.path.basename(file_path),
+                    feature_index=None,
+                )
+                return False
+
         schema_path = self.pick_schema_for_file(file_path, geojson_data)
         schema = self.load_osw_schema(schema_path)
         validator = jsonschema_rs.Draft7Validator(schema)

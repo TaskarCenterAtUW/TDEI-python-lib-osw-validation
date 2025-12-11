@@ -1,0 +1,474 @@
+{
+  "title": "root",
+  "type": "object",
+  "$id": "https://sidewalks.washington.edu/opensidewalks/0.3/points.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": [
+    "type",
+    "features",
+    "$schema"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "A field for the schema id.",
+      "enum": [
+        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+        "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json"
+      ],
+      "type": "string"
+    },
+    "dataSource": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "dataTimestamp": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "pipelineVersion": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "region": {
+      "title": "geometryObject",
+      "type": "object",
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "title": "GeometryType",
+          "type": "string",
+          "default": "MultiPolygon",
+          "enum": [
+            "MultiPolygon"
+          ]
+        },
+        "coordinates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 4,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "additionalItems": false,
+                "items": [
+                  {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "MultiPolygon geometry object."
+    },
+    "type": {
+      "title": "Feature Collection",
+      "type": "string",
+      "default": "FeatureCollection",
+      "enum": [
+        "FeatureCollection"
+      ]
+    },
+    "features": {
+      "title": "features array",
+      "type": "array",
+      "minItems": 1,
+      "additionalItems": false,
+      "items": {
+        "title": "FeatureObject",
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "title": "FeatureType",
+            "type": "string",
+            "default": "Feature",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "geometry": {
+            "title": "geometryObject",
+            "type": "object",
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "title": "GeometryType",
+                "type": "string",
+                "default": "Point",
+                "enum": [
+                  "Point"
+                ]
+              },
+              "coordinates": {
+                "type": "array",
+                "minItems": 2,
+                "additionalItems": false,
+                "items": [
+                  {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            }
+          },
+          "properties": {
+            "title": "propertiesObject",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "amenity": {
+                "enum": [
+                  "bench",
+                  "waste_basket"
+                ],
+                "type": "string"
+              },
+              "barrier": {
+                "enum": [
+                  "bollard"
+                ],
+                "type": "string"
+              },
+              "emergency": {
+                "enum": [
+                  "fire_hydrant"
+                ],
+                "type": "string"
+              },
+              "man_made": {
+                "enum": [
+                  "manhole"
+                ],
+                "type": "string"
+              },
+              "power": {
+                "enum": [
+                  "pole"
+                ],
+                "type": "string"
+              },
+              "highway": {
+                "enum": [
+                  "street_lamp"
+                ],
+                "type": "string"
+              },
+              "leaf_cycle": {
+                "description": "A field that describes the phenology of leaves, for instance evergreen or deciduous.",
+                "enum": [
+                  "deciduous",
+                  "evergreen",
+                  "mixed",
+                  "semi_deciduous",
+                  "semi_evergreen"
+                ],
+                "type": "string"
+              },
+              "leaf_type": {
+                "description": "A field that describes the type of leaves, for instance broadleaved, or needleleaved.",
+                "enum": [
+                  "broadleaved",
+                  "leafless",
+                  "mixed",
+                  "needleleaved"
+                ],
+                "type": "string"
+              },
+              "natural": {
+                "enum": [
+                  "tree"
+                ],
+                "type": "string"
+              }
+            },
+            "patternProperties": {
+              "^ext:.*$": {}
+            },
+            "required": [
+              "_id"
+            ],
+            "anyOf": [
+              {
+                "title": "BenchFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "amenity": {
+                    "enum": [
+                      "bench"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "amenity"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "BollardFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "barrier": {
+                    "enum": [
+                      "bollard"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "barrier"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "CustomPointFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "FireHydrantFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "emergency": {
+                    "enum": [
+                      "fire_hydrant"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "emergency"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "ManholeFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "man_made": {
+                    "enum": [
+                      "manhole"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "man_made"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "PowerPoleFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "power": {
+                    "enum": [
+                      "pole"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "power"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "StreetLampFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "street_lamp"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "TreeFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "leaf_cycle": {
+                    "description": "A field that describes the phenology of leaves, for instance evergreen or deciduous.",
+                    "enum": [
+                      "deciduous",
+                      "evergreen",
+                      "mixed",
+                      "semi_deciduous",
+                      "semi_evergreen"
+                    ],
+                    "type": "string"
+                  },
+                  "leaf_type": {
+                    "description": "A field that describes the type of leaves, for instance broadleaved, or needleleaved.",
+                    "enum": [
+                      "broadleaved",
+                      "leafless",
+                      "mixed",
+                      "needleleaved"
+                    ],
+                    "type": "string"
+                  },
+                  "natural": {
+                    "enum": [
+                      "tree"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "natural"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "WasteBasketFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "amenity": {
+                    "enum": [
+                      "waste_basket"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "amenity"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

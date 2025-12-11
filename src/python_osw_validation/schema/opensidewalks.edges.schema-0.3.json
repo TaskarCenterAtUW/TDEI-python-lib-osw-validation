@@ -1,0 +1,1898 @@
+{
+  "title": "root",
+  "type": "object",
+  "$id": "https://sidewalks.washington.edu/opensidewalks/0.3/edges.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": [
+    "type",
+    "features",
+    "$schema"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "A field for the schema id.",
+      "enum": [
+        "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+        "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json"
+      ],
+      "type": "string"
+    },
+    "dataSource": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "dataTimestamp": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "pipelineVersion": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "region": {
+      "title": "geometryObject",
+      "type": "object",
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "title": "GeometryType",
+          "type": "string",
+          "default": "MultiPolygon",
+          "enum": [
+            "MultiPolygon"
+          ]
+        },
+        "coordinates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 4,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "additionalItems": false,
+                "items": [
+                  {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "MultiPolygon geometry object."
+    },
+    "type": {
+      "title": "Feature Collection",
+      "type": "string",
+      "default": "FeatureCollection",
+      "enum": [
+        "FeatureCollection"
+      ]
+    },
+    "features": {
+      "title": "features array",
+      "type": "array",
+      "minItems": 1,
+      "additionalItems": false,
+      "items": {
+        "title": "FeatureObject",
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "title": "FeatureType",
+            "type": "string",
+            "default": "Feature",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "geometry": {
+            "title": "geometryObject",
+            "type": "object",
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "title": "GeometryType",
+                "type": "string",
+                "default": "LineString",
+                "enum": [
+                  "LineString"
+                ]
+              },
+              "coordinates": {
+                "title": "coordinates",
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "additionalItems": false,
+                  "items": [
+                    {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180
+                    },
+                    {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "properties": {
+            "title": "propertiesObject",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "_u_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "_v_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                "type": "string"
+              },
+              "foot": {
+                "description": "A field that indicates whether an edge can be used by pedestrians.",
+                "enum": [
+                  "designated",
+                  "destination",
+                  "no",
+                  "permissive",
+                  "private",
+                  "use_sidepath",
+                  "yes"
+                ],
+                "type": "string"
+              },
+              "highway": {
+                "enum": [
+                  "service",
+                  "footway",
+                  "living_street",
+                  "pedestrian",
+                  "primary",
+                  "residential",
+                  "secondary",
+                  "steps",
+                  "tertiary",
+                  "trunk",
+                  "unclassified"
+                ],
+                "type": "string"
+              },
+              "incline": {
+                "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                "maximum": 1,
+                "minimum": -1,
+                "type": "number"
+              },
+              "length": {
+                "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                "maximum": 5000,
+                "minimum": 0,
+                "type": "number"
+              },
+              "name": {
+                "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                "type": "string"
+              },
+              "service": {
+                "enum": [
+                  "alley",
+                  "driveway",
+                  "parking_aisle"
+                ],
+                "type": "string"
+              },
+              "surface": {
+                "description": "A field for the surface material of the path.",
+                "enum": [
+                  "asphalt",
+                  "concrete",
+                  "dirt",
+                  "grass",
+                  "grass_paver",
+                  "gravel",
+                  "paved",
+                  "paving_stones",
+                  "unpaved"
+                ],
+                "type": "string"
+              },
+              "width": {
+                "description": "A field for width of an entity in meters.",
+                "maximum": 500,
+                "minimum": 0,
+                "type": "number"
+              },
+              "crossing:markings": {
+                "description": "A field for markings on the ground which are meant to draw attention to the area where pedestrians are to cross the road.",
+                "enum": [
+                  "dashes",
+                  "dots",
+                  "ladder",
+                  "ladder:paired",
+                  "ladder:skewed",
+                  "lines",
+                  "lines:paired",
+                  "lines:rainbow",
+                  "no",
+                  "pictograms",
+                  "rainbow",
+                  "skewed",
+                  "surface",
+                  "yes",
+                  "zebra",
+                  "zebra:bicolour",
+                  "zebra:double",
+                  "zebra:paired",
+                  "zebra:rainbow"
+                ],
+                "type": "string"
+              },
+              "footway": {
+                "enum": [
+                  "crossing",
+                  "sidewalk",
+                  "traffic_island"
+                ],
+                "type": "string"
+              },
+              "climb": {
+                "description": "A field for the climb direction of steps. You can use \"up\" or \"down\" to indicate the direction of the climb relative to the direction of the edge.",
+                "enum": [
+                  "down",
+                  "up"
+                ],
+                "type": "string"
+              },
+              "step_count": {
+                "description": "A field for number of steps in stairs.",
+                "maximum": 500,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "patternProperties": {
+              "^ext:.*$": {}
+            },
+            "required": [
+              "_id",
+              "_u_id",
+              "_v_id",
+              "highway"
+            ],
+            "anyOf": [
+              {
+                "title": "AlleyFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "service"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "service": {
+                    "enum": [
+                      "alley"
+                    ],
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway",
+                  "service"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "CrossingFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "crossing:markings": {
+                    "description": "A field for markings on the ground which are meant to draw attention to the area where pedestrians are to cross the road.",
+                    "enum": [
+                      "dashes",
+                      "dots",
+                      "ladder",
+                      "ladder:paired",
+                      "ladder:skewed",
+                      "lines",
+                      "lines:paired",
+                      "lines:rainbow",
+                      "no",
+                      "pictograms",
+                      "rainbow",
+                      "skewed",
+                      "surface",
+                      "yes",
+                      "zebra",
+                      "zebra:bicolour",
+                      "zebra:double",
+                      "zebra:paired",
+                      "zebra:rainbow"
+                    ],
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "footway": {
+                    "enum": [
+                      "crossing"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "footway"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "footway",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "DrivewayFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "service"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "service": {
+                    "enum": [
+                      "driveway"
+                    ],
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway",
+                  "service"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "FootwayFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "footway"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "LivingStreetFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "living_street"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "ParkingAisleFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "service"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "service": {
+                    "enum": [
+                      "parking_aisle"
+                    ],
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway",
+                  "service"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "PedestrianFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "pedestrian"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "PrimaryStreetFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "primary"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "ResidentialStreetFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "residential"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "SecondaryStreetFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "secondary"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "ServiceRoadFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "service"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "SidewalkFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "footway": {
+                    "enum": [
+                      "sidewalk"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "footway"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "footway",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "StepsFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "climb": {
+                    "description": "A field for the climb direction of steps. You can use \"up\" or \"down\" to indicate the direction of the climb relative to the direction of the edge.",
+                    "enum": [
+                      "down",
+                      "up"
+                    ],
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "steps"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "step_count": {
+                    "description": "A field for number of steps in stairs.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "TertiaryStreetFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "tertiary"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "TrafficIslandFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "footway": {
+                    "enum": [
+                      "traffic_island"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "footway"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "footway",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "TrunkRoadFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "trunk"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
+                "title": "UnclassifiedRoadFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "A free form text field for describing an entity. May be pre-encoded in relevant pedestrian paths to assist with routing instructing or investigation of map features. For example, a description of the sidewalk in relation to a nearby street may be a useful textual description, such as \"NE of Main St.\" Can also be considered a flexible location to embed arbitrary information for specific use cases.",
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "highway": {
+                    "enum": [
+                      "unclassified"
+                    ],
+                    "type": "string"
+                  },
+                  "incline": {
+                    "description": "A field for the estimated incline over a particular path, i.e. slope, i.e. grade, i.e. rise over run. If derived from OpenStreetMap data, this is the maximum incline over the path. If derived from DEM data, it is more likely to be an underestimation. Positive values indicate an uphill climb while negative are downhill. For example, a 45 degree downhill value for incline would be -1.0.",
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "length": {
+                    "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
+                    "maximum": 5000,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "description": "A field for width of an entity in meters.",
+                    "maximum": 500,
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id",
+                  "highway"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
