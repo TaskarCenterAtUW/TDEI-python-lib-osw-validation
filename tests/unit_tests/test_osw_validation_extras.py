@@ -73,8 +73,8 @@ class TestOSWValidationExtras(unittest.TestCase):
 
     # ---------------- tests ----------------
 
-    def test_missing_u_id_logged_and_no_keyerror(self):
-        """Edges missing `_u_id` should log a friendly error instead of raising KeyError."""
+    def test_missing_u_id_reports_error_without_keyerror(self):
+        """Edges missing `_u_id` should report a friendly error instead of raising KeyError."""
         fake_files = ["/tmp/nodes.geojson", "/tmp/edges.geojson"]
         nodes = self._gdf_nodes([1, 2])
         # edges WITHOUT _u_id; include _id to bypass duplicated('_id') KeyError
@@ -175,7 +175,7 @@ class TestOSWValidationExtras(unittest.TestCase):
                 shown_ids = [x.strip() for x in displayed.split(",")]
                 self.assertLessEqual(len(shown_ids), 20)
 
-    def test_load_osw_file_logs_json_decode_error(self):
+    def test_load_osw_file_reports_json_decode_error(self):
         """Invalid JSON should surface a detailed message with location context."""
         validator = OSWValidation(zipfile_path="dummy.zip")
         with tempfile.NamedTemporaryFile("w", suffix=".geojson", delete=False) as tmp:
@@ -200,7 +200,7 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertIsNone(issue["feature_index"])
         self.assertEqual(issue["error_message"], message)
 
-    def test_load_osw_file_logs_os_error(self):
+    def test_load_osw_file_reports_os_error(self):
         """Missing files should log a readable OS error message."""
         validator = OSWValidation(zipfile_path="dummy.zip")
         missing_path = os.path.join(tempfile.gettempdir(), "nonexistent_osw_file.geojson")
@@ -252,7 +252,7 @@ class TestOSWValidationExtras(unittest.TestCase):
         finally:
             os.unlink(bad_path)
 
-    def test_validate_logs_read_file_exception(self):
+    def test_validate_reports_read_file_exception(self):
         """GeoDataFrame read failures are logged and do not crash."""
         fake_files = ["/tmp/edges.geojson"]
 
@@ -274,8 +274,8 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertTrue(any("Failed to read 'edges.geojson' as GeoJSON: boom" in e for e in (res.errors or [])),
                         f"Errors were: {res.errors}")
 
-    def test_missing_w_id_logs_error(self):
-        """Zones missing _w_id should log a clear message."""
+    def test_missing_w_id_reports_error(self):
+        """Zones missing _w_id should report a clear message."""
         fake_files = ["/tmp/nodes.geojson", "/tmp/zones.geojson"]
         nodes = self._gdf_nodes([1, 2])
         # zones without _w_id column
@@ -310,8 +310,8 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertTrue(any("Missing required column '_w_id' in zones." in e for e in (res.errors or [])),
                         f"Errors were: {res.errors}")
 
-    def test_extension_read_failure_is_logged(self):
-        """Failure reading an extension file should be logged and skipped."""
+    def test_extension_read_failure_reports_error(self):
+        """Failure reading an extension file should be reported and skipped."""
         fake_files = ["/tmp/nodes.geojson"]
         nodes = self._gdf_nodes([1])
         ext_path = "/tmp/custom.geojson"
@@ -346,8 +346,8 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertTrue(any("Failed to read extension 'custom.geojson' as GeoJSON: boom" in e for e in (res.errors or [])),
                         f"Errors were: {res.errors}")
 
-    def test_extension_invalid_ids_logging_failure(self):
-        """If invalid extension features exist but id extraction fails, we log gracefully."""
+    def test_extension_invalid_ids_reports_extraction_failure(self):
+        """If invalid extension features exist but id extraction fails, we report gracefully."""
         ext_path = "/tmp/custom.geojson"
         fake_files = ["/tmp/nodes.geojson"]
         nodes = self._gdf_nodes([1])
@@ -389,6 +389,94 @@ class TestOSWValidationExtras(unittest.TestCase):
 
         self.assertFalse(res.is_valid)
         self.assertTrue(any("Invalid features found in `custom.geojson`, but failed to extract IDs: explode" in e
+                            for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
+    def test_extension_invalid_geometries_reported(self):
+        """Invalid geometries inside an extension file should surface a clear error."""
+        ext_path = "/tmp/custom.geojson"
+        fake_files = ["/tmp/nodes.geojson"]
+        nodes = self._gdf_nodes([1])
+
+        invalid_geojson = MagicMock()
+        invalid_geojson.__len__.return_value = 2
+        invalid_geojson.get.return_value = ["a", "b"]
+
+        extension_file = MagicMock()
+        extension_file.is_valid = [False, False]
+        extension_file.__getitem__.return_value = invalid_geojson
+        extension_file.drop.return_value = pd.DataFrame()
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = self._fake_validator(fake_files, external_exts=[ext_path])
+            PVal.return_value = val
+
+            def _rf(path):
+                b = os.path.basename(path)
+                if "nodes" in b:
+                    return nodes
+                if os.path.basename(path) == os.path.basename(ext_path):
+                    return extension_file
+                return gpd.GeoDataFrame()
+
+            PRead.side_effect = _rf
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Invalid geometries found in extension file `custom.geojson`" in e
+                            for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
+
+    def test_extension_serialization_failure_reported(self):
+        """Non-serializable extension properties should be reported."""
+        ext_path = "/tmp/custom.geojson"
+        fake_files = ["/tmp/nodes.geojson"]
+        nodes = self._gdf_nodes([1])
+
+        extension_file = MagicMock()
+        extension_file.is_valid = [True]
+        extension_file.__getitem__.return_value = gpd.GeoDataFrame()  # no invalid geometries
+        extension_file.drop.side_effect = Exception("serialize boom")
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = self._fake_validator(fake_files, external_exts=[ext_path])
+            PVal.return_value = val
+
+            def _rf(path):
+                b = os.path.basename(path)
+                if "nodes" in b:
+                    return nodes
+                if os.path.basename(path) == os.path.basename(ext_path):
+                    return extension_file
+                return gpd.GeoDataFrame()
+
+            PRead.side_effect = _rf
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Extension file `custom.geojson` has non-serializable properties: serialize boom" in e
                             for e in (res.errors or [])),
                         f"Errors were: {res.errors}")
 
@@ -554,7 +642,7 @@ class TestOSWValidationInternals(unittest.TestCase):
         s = v._get_colset(gdf, "_id", "nodes")
         self.assertEqual(s, {1, 2, 3})
 
-    def test_get_colset_logs_and_returns_empty_when_missing(self):
+    def test_get_colset_reports_missing_column(self):
         v = OSWValidation(zipfile_path="dummy.zip")
         gdf = self._gdf({"foo": [1, 2]}, geom="Point")
         s = v._get_colset(gdf, "_id", "nodes")
@@ -575,7 +663,7 @@ class TestOSWValidationInternals(unittest.TestCase):
         s = v._get_colset(None, "_id", "nodes")
         self.assertEqual(s, set())
 
-    def test_get_colset_logs_when_stringify_fails(self):
+    def test_get_colset_reports_stringify_failure(self):
         class BadObj:
             def __hash__(self):
                 raise TypeError("no hash")
@@ -588,6 +676,16 @@ class TestOSWValidationInternals(unittest.TestCase):
         s = v._get_colset(gdf, "meta", "nodes")
         self.assertEqual(s, set())
         self.assertTrue(any("Could not create set for column 'meta' in nodes." in e for e in (v.errors or [])),
+                        f"Errors were: {v.errors}")
+
+    def test_load_osw_schema_reports_missing_file(self):
+        v = OSWValidation(zipfile_path="dummy.zip")
+        missing_schema = os.path.join(tempfile.gettempdir(), "missing_schema.json")
+        if os.path.exists(missing_schema):
+            os.unlink(missing_schema)
+        with self.assertRaises(Exception):
+            v.load_osw_schema(missing_schema)
+        self.assertTrue(any("Invalid or missing schema file" in e for e in (v.errors or [])),
                         f"Errors were: {v.errors}")
 
     def test_schema_02_rejects_tree_and_custom(self):
@@ -757,6 +855,32 @@ class TestOSWValidationInternals(unittest.TestCase):
         # should always return forced schema when provided
         self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), force)
         self.assertEqual(v.pick_schema_for_file("/any/path.json", {"features": [{"geometry": {"type": "Point"}}]}), force)
+
+    def test_unexpected_exception_surfaces_unable_to_validate(self):
+        """Any unexpected exception should be surfaced via 'Unable to validate'."""
+        fake_files = ["/tmp/nodes.geojson"]
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, side_effect=RuntimeError("boom")), \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = MagicMock()
+            val.files = fake_files
+            val.externalExtensions = []
+            val.is_valid.return_value = True
+            val.error = None
+            PVal.return_value = val
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("Unable to validate: boom" in e for e in (res.errors or [])),
+                        f"Errors were: {res.errors}")
 
 
 class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
