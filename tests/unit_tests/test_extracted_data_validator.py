@@ -99,6 +99,16 @@ class TestExtractedDataValidator(unittest.TestCase):
             self.assertFalse(validator.is_valid())
             self.assertEqual(validator.error, 'Multiple .geojson files of the same type found: nodes.')
 
+    def test_unsupported_files_are_rejected(self):
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['a.nodes.geojson', 'something_else.geojson'])
+        self.assertFalse(validator.is_valid())
+        self.assertEqual(
+            validator.error,
+            'Unsupported .geojson files present: something_else.geojson. '
+            'Allowed file types are {edges, nodes, points, lines, zones, polygons}'
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
