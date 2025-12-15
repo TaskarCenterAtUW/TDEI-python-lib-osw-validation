@@ -1,5 +1,12 @@
 # Change log
 
+### 0.3.1 - 2025-02-12
+- Restored custom field support across schemas (CustomNode/Edge/Zone) while aligning required fields with original behavior.
+- Relaxed edges/zones global required lists to let custom features omit `highway` (kept in branch-specific schemas).
+- Enhanced 0.2 compatibility guard: allow `ext:` on nodes, block custom content per dataset with specific messages (e.g., Custom Edge/Point/Polygon), and reject non-point `ext:`.
+- Added schema parity tests and fixtures for custom feature branches and 0.2 vs 0.3 behavior, including guard reason checks.
+- Improved diff tooling/reporting and parity fixtures to cover custom scenarios.
+
 ### 0.3.0
 - Default to OSW 0.3 dataset-specific schemas (edges, lines, nodes, points, polygons, zones) with filename-driven selection; removed legacy monolithic/geometry schema files.
 - Enforce the six canonical OSW 0.3 filenames inside datasets; reject non-standard names and detect duplicates/missing required files (with new unit tests).

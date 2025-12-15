@@ -1,0 +1,27 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+      "properties": {
+        "_id": "sw_3234",
+        "highway": "footway",
+        "footway": "traffic_island",
+        "_u_id": "1",
+        "_v_id": "2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+      "properties": {
+        "_id": "cus_123",
+        "_u_id": "3",
+        "_v_id": "5",
+        "ext:test_field": "custom_value"
+      }
+    }
+  ]
+}

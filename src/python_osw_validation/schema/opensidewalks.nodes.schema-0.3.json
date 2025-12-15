@@ -197,6 +197,23 @@
             ],
             "anyOf": [
               {
+                "title": "CustomNodeFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
+              {
                 "title": "BareNodeFields",
                 "type": "object",
                 "additionalProperties": false,

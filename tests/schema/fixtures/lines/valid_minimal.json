@@ -1,0 +1,11 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[0, 0], [2, 2]]},
+      "properties": {"_id": "line-1"}
+    }
+  ]
+}

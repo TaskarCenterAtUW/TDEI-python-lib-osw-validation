@@ -1,0 +1,10 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"_id": "node-3"}
+    }
+  ]
+}

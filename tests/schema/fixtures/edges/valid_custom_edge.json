@@ -1,0 +1,17 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+      "properties": {
+        "_id": "custom-edge-1",
+        "_u_id": "node-1",
+        "_v_id": "node-2",
+        "highway": "service",
+        "foot": "yes"
+      }
+    }
+  ]
+}

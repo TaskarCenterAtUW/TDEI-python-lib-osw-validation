@@ -225,10 +225,65 @@
             },
             "required": [
               "_id",
-              "_w_id",
-              "highway"
+              "_w_id"
             ],
             "anyOf": [
+              {
+                "title": "CustomZoneFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_w_id": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
+                    "type": "string"
+                  },
+                  "surface": {
+                    "description": "A field for the surface material of the path.",
+                    "enum": [
+                      "asphalt",
+                      "concrete",
+                      "dirt",
+                      "grass",
+                      "grass_paver",
+                      "gravel",
+                      "paved",
+                      "paving_stones",
+                      "unpaved"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_w_id"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
               {
                 "title": "PedestrianZoneFields",
                 "type": "object",

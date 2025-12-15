@@ -124,15 +124,24 @@ class OSWValidation:
                 return key
         return None
 
-    def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> bool:
-        """Detect Tree coverage or Custom Point/Line/Polygon in legacy 0.2 datasets."""
+    def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> set:
+        """Detect Tree coverage or Custom content in legacy 0.2 datasets.
+
+        Returns a set of reason tags, e.g. {"tree", "custom_ext", "custom_token"}.
+        Empty set means no 0.2-only violations detected.
+        """
+        reasons = set()
         for feat in geojson_data.get("features", []):
             props = feat.get("properties") or {}
+            geom = feat.get("geometry") or {}
+            geom_type = geom.get("type") if isinstance(geom, dict) else None
+            is_point = isinstance(geom_type, str) and geom_type.lower() == "point"
+
             val = props.get("natural")
             if isinstance(val, str) and val.strip().lower() in {"tree", "wood"}:
-                return True
+                reasons.add("tree")
             if any(k in props for k in ("leaf_cycle", "leaf_type")):
-                return True
+                reasons.add("tree")
             for k, v in props.items():
                 target = ""
                 if isinstance(v, str):
@@ -142,8 +151,8 @@ class OSWValidation:
                 if any(tok in target for tok in ["custom point", "custom_point", "custompoint",
                                                  "custom line", "custom_line", "customline",
                                                  "custom polygon", "custom_polygon", "custompolygon"]):
-                    return True
-        return False
+                    reasons.add("custom_token")
+        return reasons
 
     # ----------------------------
     # Schema selection
@@ -475,9 +484,25 @@ class OSWValidation:
 
         schema_url = geojson_data.get('$schema')
         if isinstance(schema_url, str) and '0.2/schema.json' in schema_url:
-            if self._contains_disallowed_features_for_02(geojson_data):
+            reasons = self._contains_disallowed_features_for_02(geojson_data)
+            if reasons:
+                dataset_key = self._schema_key_from_text(file_path) or "data"
+                custom_label_map = {
+                    "edges": "Custom Edge",
+                    "lines": "Custom Line",
+                    "polygons": "Custom Polygon",
+                    "zones": "Custom Polygon/Zone",
+                    "points": "Custom Point",
+                    "nodes": "Custom Node",
+                }
+                parts = []
+                if "tree" in reasons:
+                    parts.append("Tree coverage")
+                if "custom_ext" in reasons or "custom_token" in reasons:
+                    parts.append(custom_label_map.get(dataset_key, "Custom content"))
+                msg = f"0.2 schema does not support " + " and ".join(parts)
                 self.log_errors(
-                    message="0.2 schema does not support Tree coverage, Custom Point, Custom Line, and Custom Polygon",
+                    message=msg,
                     filename=os.path.basename(file_path),
                     feature_index=None,
                 )
