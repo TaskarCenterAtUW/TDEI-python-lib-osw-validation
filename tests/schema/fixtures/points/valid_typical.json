@@ -1,0 +1,14 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [6.1, 7.2]},
+      "properties": {
+        "_id": "point-2",
+        "natural": "tree"
+      }
+    }
+  ]
+}

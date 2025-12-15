@@ -308,10 +308,49 @@
             "required": [
               "_id",
               "_u_id",
-              "_v_id",
-              "highway"
+              "_v_id"
             ],
             "anyOf": [
+              {
+                "title": "CustomEdgeFields",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_u_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "_v_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "foot": {
+                    "description": "A field that indicates whether an edge can be used by pedestrians.",
+                    "enum": [
+                      "designated",
+                      "destination",
+                      "no",
+                      "permissive",
+                      "private",
+                      "use_sidepath",
+                      "yes"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "_u_id",
+                  "_v_id"
+                ],
+                "patternProperties": {
+                  "^ext:.*$": {}
+                }
+              },
               {
                 "title": "AlleyFields",
                 "type": "object",

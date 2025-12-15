@@ -1,0 +1,15 @@
+{
+  "$schema": "https://sidewalks.washington.edu/opensidewalks/0.2/schema.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[0,0],[1,0],[1,1],[0,1],[0,0]]]},
+      "properties": {
+        "_id": "cz-02",
+        "_w_id": ["way-1"],
+        "ext:test_field": "custom"
+      }
+    }
+  ]
+}
