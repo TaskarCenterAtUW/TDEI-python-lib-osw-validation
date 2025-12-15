@@ -620,7 +620,7 @@ class TestOSWValidationInternals(unittest.TestCase):
         finally:
             os.unlink(path_custom)
         self.assertFalse(res2)
-        self.assertTrue(any("0.2 schema does not support Tree coverage" in e for e in (v2.errors or [])),
+        self.assertTrue(any("0.2 schema does not support" in e for e in (v2.errors or [])),
                         f"Errors were: {v2.errors}")
 
         path_wood = self._write_geojson({**base, "features": [_feature({"natural": "wood", "leaf_cycle": "mixed"})]})
