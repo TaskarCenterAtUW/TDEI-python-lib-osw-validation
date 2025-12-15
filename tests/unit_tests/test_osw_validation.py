@@ -166,22 +166,22 @@ class TestOSWValidation(unittest.TestCase):
     def test_external_extension_file_inside_zipfile(self):
         validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile)
         result = validation.validate()
-        self.assertTrue(result.is_valid)
-        self.assertIsNone(result.errors)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
 
     def test_external_extension_file_inside_zipfile_with_schema(self):
         validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile,
                                    schema_paths=self.schema_paths)
         result = validation.validate()
-        self.assertTrue(result.is_valid)
-        self.assertIsNone(result.errors)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
 
     def test_external_extension_file_inside_zipfile_with_invalid_schema(self):
         validation = OSWValidation(zipfile_path=self.external_extension_file_zipfile,
                                    schema_file_path=self.invalid_schema_file_path)
         result = validation.validate()
-        self.assertTrue(result.is_valid)
-        self.assertIsNone(result.errors)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
 
     def test_id_missing_zipfile(self):
         validation = OSWValidation(zipfile_path=self.id_missing_zipfile)

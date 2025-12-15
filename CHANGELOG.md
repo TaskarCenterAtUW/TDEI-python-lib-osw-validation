@@ -1,6 +1,11 @@
 # Change log
 
-### 0.3.1 - 2025-02-12
+### 0.3.2 - 2025-12-15
+- Reject non-OSW GeoJSON files (anything beyond points/nodes/edges/lines/polygons/zones) with a clear error; added unit coverage for unsupported files and extension validation paths.
+- Clarified extension handling expectations: external extension ZIPs are now considered invalid inputs in tests.
+- Added a detailed scenario summary (`unit_test_overview.md`) and renamed log-oriented tests for clarity; removed noisy traceback printing on unexpected validation errors.
+
+### 0.3.1 - 2025-12-15
 - Restored custom field support across schemas (CustomNode/Edge/Zone) while aligning required fields with original behavior.
 - Relaxed edges/zones global required lists to let custom features omit `highway` (kept in branch-specific schemas).
 - Enhanced 0.2 compatibility guard: allow `ext:` on nodes, block custom content per dataset with specific messages (e.g., Custom Edge/Point/Polygon), and reject non-point `ext:`.

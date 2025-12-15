@@ -98,6 +98,16 @@ class ExtractedDataValidator:
             gc.collect()
             return True
 
+        allowed_keys = tuple(OSW_DATASET_FILES.keys())
+        unsupported_files = sorted(
+            {bn for bn in basenames if not any(key in bn for key in allowed_keys)}
+        )
+        if unsupported_files:
+            allowed_fmt = ", ".join(allowed_keys)
+            self.error = (f"Unsupported .geojson files present: {', '.join(unsupported_files)}. "
+                          f"Allowed file types are {{{allowed_fmt}}}")
+            return False
+
         required_files = [key for key, value in OSW_DATASET_FILES.items() if value['required']]
         optional_files = [key for key, value in OSW_DATASET_FILES.items() if not value['required']]
         missing_files = []
