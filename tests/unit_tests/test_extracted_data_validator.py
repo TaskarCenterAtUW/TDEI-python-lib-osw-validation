@@ -106,7 +106,7 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: something_else.geojson. '
-            'Allowed file types are {edges, nodes, points, lines, zones, polygons}'
+            'Allowed file names are *.{edges, nodes, points, lines, zones, polygons}.geojson'
         )
 
 

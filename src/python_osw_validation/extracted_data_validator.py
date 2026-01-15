@@ -104,8 +104,9 @@ class ExtractedDataValidator:
         )
         if unsupported_files:
             allowed_fmt = ", ".join(allowed_keys)
+            allowed_names = f"*.{{{allowed_fmt}}}.geojson"
             self.error = (f"Unsupported .geojson files present: {', '.join(unsupported_files)}. "
-                          f"Allowed file types are {{{allowed_fmt}}}")
+                          f"Allowed file names are {allowed_names}")
             return False
 
         required_files = [key for key, value in OSW_DATASET_FILES.items() if value['required']]
