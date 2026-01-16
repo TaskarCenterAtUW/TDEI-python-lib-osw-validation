@@ -12,6 +12,18 @@ class FakeErr:
         self.schema_path = schema_path if schema_path is not None else []
 
 
+# ----- tests for _add_additional_properties_hint ------------------------------
+class TestAddAdditionalPropertiesHint(unittest.TestCase):
+    def test_appends_ext_hint_for_unexpected_tag(self):
+        msg = "Additional properties are not allowed ('foo' was unexpected)"
+        expected = "Additional properties are not allowed ('foo' was unexpected). If you want to carry this tag, change it to ext:foo"
+        self.assertEqual(helpers._add_additional_properties_hint(msg), expected)
+
+    def test_leaves_other_messages_unchanged(self):
+        msg = "value must be one of [a, b, c]"
+        self.assertEqual(helpers._add_additional_properties_hint(msg), msg)
+
+
 # ----- tests for _feature_index_from_error ------------------------------------
 class TestFeatureIndexFromError(unittest.TestCase):
     def test_feature_index_present(self):
@@ -97,6 +109,12 @@ class TestPrettyMessage(unittest.TestCase):
     def test_default_first_line_from_message(self):
         e = FakeErr(kind=None, validator=None, message="first line only\nsecond line ignored")
         self.assertEqual(helpers._pretty_message(e, schema={}), "first line only")
+
+    def test_additional_properties_hint_is_applied(self):
+        msg = "Additional properties are not allowed ('bar' was unexpected)"
+        e = FakeErr(kind=None, validator=None, message=msg)
+        expected = "Additional properties are not allowed ('bar' was unexpected). If you want to carry this tag, change it to ext:bar"
+        self.assertEqual(helpers._pretty_message(e, schema={}), expected)
 
 
 # ----- tests for _rank_for -----------------------------------------------------

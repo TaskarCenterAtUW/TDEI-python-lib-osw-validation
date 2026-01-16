@@ -73,6 +73,24 @@ class TestOSWValidationExtras(unittest.TestCase):
 
     # ---------------- tests ----------------
 
+    def test_structure_error_uses_uploaded_filename(self):
+        """Validator errors should reference the uploaded ZIP, not the temp extraction dir."""
+        with patch(_PATCH_ZIP) as PZip, patch(_PATCH_EV) as PVal:
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/tmp123"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            PVal.return_value = self._fake_validator(files=[], valid=False, error="bad structure")
+
+            upload_path = "/uploads/user_dataset.zip"
+            res = OSWValidation(zipfile_path=upload_path).validate()
+
+        self.assertFalse(res.is_valid)
+        issue = res.issues[0]
+        self.assertEqual(issue["filename"], os.path.basename(upload_path))
+        self.assertIn("bad structure", issue["error_message"])
+
     def test_missing_u_id_reports_error_without_keyerror(self):
         """Edges missing `_u_id` should report a friendly error instead of raising KeyError."""
         fake_files = ["/tmp/nodes.geojson", "/tmp/edges.geojson"]

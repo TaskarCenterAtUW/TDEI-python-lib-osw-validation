@@ -9,7 +9,12 @@ import jsonschema_rs
 from .zipfile_handler import ZipFileHandler
 from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES
 from .version import __version__
-from .helpers import _feature_index_from_error, _pretty_message, _rank_for
+from .helpers import (
+    _add_additional_properties_hint,
+    _feature_index_from_error,
+    _pretty_message,
+    _rank_for,
+)
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
 DEFAULT_DATASET_SCHEMAS = {
@@ -211,9 +216,10 @@ class OSWValidation:
             # Validate the folder structure
             validator = ExtractedDataValidator(self.extracted_dir)
             if not validator.is_valid():
+                upload_name = os.path.basename(self.zipfile_path) if self.zipfile_path else self.extracted_dir
                 self.log_errors(
                     message=validator.error,
-                    filename=self.extracted_dir,
+                    filename=upload_name,
                     feature_index=None
                 )
                 return ValidationResult(False, self.errors, self.issues)
@@ -526,7 +532,8 @@ class OSWValidation:
         for err in validator.iter_errors(geojson_data):
             # legacy list (for backward compatibility)
             if legacy_count < max_errors:
-                self.errors.append(f'Validation error: {getattr(err, "message", "")}')
+                raw_msg = _add_additional_properties_hint(getattr(err, "message", "") or "")
+                self.errors.append(f"Validation error: {raw_msg}")
                 legacy_count += 1
             else:
                 # We've reached the legacy cap; stop work to match original performance
