@@ -1,6 +1,18 @@
 from typing import Optional
 import re
 
+_ADDITIONAL_PROPERTIES_RE = re.compile(
+    r"Additional properties are not allowed \('(?P<tag>[^']+)' was unexpected\)"
+)
+
+
+def _add_additional_properties_hint(msg: str) -> str:
+    match = _ADDITIONAL_PROPERTIES_RE.search(msg)
+    if not match:
+        return msg
+    tag = match.group("tag")
+    return f"{msg}. If you want to carry this tag, change it to ext:{tag}"
+
 def _feature_index_from_error(err) -> Optional[int]:
     """
     Return the index after 'features' in the instance path, else None.
@@ -46,7 +58,7 @@ def _pretty_message(err, schema) -> str:
     kind = _err_kind(err)
 
     if kind == "Enum":
-        return _clean_enum_message(err)
+        return _add_additional_properties_hint(_clean_enum_message(err))
 
     if kind == "AnyOf":
         # Follow schema_path to the anyOf node; union of 'required' keys in branches.
@@ -73,12 +85,13 @@ def _pretty_message(err, schema) -> str:
 
             if required:
                 props = ", ".join(sorted(required))
-                return f"must include one of: {props}"
+                return _add_additional_properties_hint(f"must include one of: {props}")
         except Exception:
             pass
 
     # Default: first line from library message
-    return (getattr(err, "message", "") or "").split("\n")[0]
+    default_msg = (getattr(err, "message", "") or "").split("\n")[0]
+    return _add_additional_properties_hint(default_msg)
 
 
 def _rank_for(err) -> tuple:
