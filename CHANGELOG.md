@@ -1,5 +1,9 @@
 # Change log
 
+### 0.3.4 - 2026-02-04
+- Update leaf_cycle enums in 0.3 lines/points/polygons schemas and add coverage for the new allowed values.
+- Add unit tests that validate acceptance/rejection of leaf_cycle values with the 0.3 schemas.
+
 ### 0.3.3 - 2026-01-15
 - Clarified unsupported-file messaging to show allowed patterns as `*.{edges, nodes, points, lines, zones, polygons}.geojson`.
 - Structure-level validation errors now report the uploaded filename (ZIP) instead of the temp extraction directory; added coverage.
