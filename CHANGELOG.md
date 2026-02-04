@@ -1,5 +1,9 @@
 # Change log
 
+### 0.3.3 - 2026-02-04
+- Update leaf_cycle enums in 0.3 lines/points/polygons schemas and add coverage for the new allowed values.
+- Add unit tests that validate acceptance/rejection of leaf_cycle values with the 0.3 schemas.
+
 ### 0.3.2 - 2025-12-15
 - Reject non-OSW GeoJSON files (anything beyond points/nodes/edges/lines/polygons/zones) with a clear error; added unit coverage for unsupported files and extension validation paths.
 - Clarified extension handling expectations: external extension ZIPs are now considered invalid inputs in tests.
