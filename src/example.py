@@ -3,7 +3,8 @@ from python_osw_validation import OSWValidation
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(PARENT_DIR, 'tests/assets')
-VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid.zip')
+# VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid 2.zip')
+VALID_ZIP_FILE = os.path.join(ASSETS_DIR, '33493.zip')
 INVALID_ZIP_FILE = os.path.join(ASSETS_DIR, '4151.zip')
 INVALID_VANCOUVER_ZIP_FILE = os.path.join(ASSETS_DIR, 'vancouver-dataset.zip')
 SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_osw_validation/schema')
@@ -19,7 +20,8 @@ def valid_test_with_provided_schema():
 def valid_test_without_provided_schema():
     validator = OSWValidation(zipfile_path=VALID_ZIP_FILE)
     result = validator.validate()
-    print(f'Valid Test Without Schema: {"Passed" if result.is_valid else "Failed"}')
+    print(result.issues)
+    # print(f'Valid Test Without Schema: {"Passed" if result.is_valid else "Failed"}')
 
 
 def invalid_test_with_provided_schema():
@@ -45,8 +47,8 @@ def invalid_test_vancouver_dataset():
 
 
 if __name__ == '__main__':
-    valid_test_with_provided_schema()
+    # valid_test_with_provided_schema()
     valid_test_without_provided_schema()
-    invalid_test_with_provided_schema()
-    invalid_test_without_provided_schema()
-    invalid_test_vancouver_dataset()
+    # invalid_test_with_provided_schema()
+    # invalid_test_without_provided_schema()
+    # invalid_test_vancouver_dataset()
