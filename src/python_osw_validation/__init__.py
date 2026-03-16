@@ -112,21 +112,21 @@ class OSWValidation:
                 return set()
 
     def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
-        """Return dataset key (edges/nodes/points/lines/polygons/zones) if mentioned in text."""
+        """Return dataset key from exact filename suffixes only."""
         if not text:
             return None
-        lower = text.lower()
-        aliases = {
-            "edges": ("edge", "edges"),
-            "lines": ("line", "lines", "linestring"),
-            "nodes": ("node", "nodes"),
-            "points": ("point", "points"),
-            "polygons": ("polygon", "polygons", "area"),
-            "zones": ("zone", "zones"),
-        }
-        for key, variants in aliases.items():
-            if any(alias in lower for alias in variants):
+
+        basename = os.path.basename(text).lower()
+        stem, _ = os.path.splitext(basename)
+        for key in self.dataset_schema_paths:
+            if (
+                    stem == key
+                    or stem == f"{key}.osw"
+                    or stem.endswith(f".{key}")
+                    or stem.endswith(f".{key}.osw")
+            ):
                 return key
+
         return None
 
     def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> set:
