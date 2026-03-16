@@ -867,6 +867,29 @@ class TestOSWValidationInternals(unittest.TestCase):
             v.line_schema_path,
         )
 
+    def test_pick_schema_ignores_prefix_substrings(self):
+        v = OSWValidation(zipfile_path="dummy.zip")
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/gs_metaline_falls_uga.nodes.geojson", {"features": []}),
+            v.dataset_schema_paths["nodes"],
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/gs_yarrow_point.edges.geojson", {"features": []}),
+            v.dataset_schema_paths["edges"],
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/wa.microsoft.graph.nodes.OSW.geojson", {"features": []}),
+            v.dataset_schema_paths["nodes"],
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/baseline.nodes.geojson", {"features": []}),
+            v.dataset_schema_paths["nodes"],
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/roadEdges.geojson", {"features": []}),
+            v.line_schema_path,
+        )
+
     def test_pick_schema_force_single_schema_override(self):
         force = "/forced/opensidewalks.schema-0.3.json"
         v = OSWValidation(zipfile_path="dummy.zip", schema_file_path=force)

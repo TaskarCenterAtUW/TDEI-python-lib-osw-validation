@@ -1,20 +1,22 @@
 # TDEI python lib OSW validation package
 
-This package validates the OSW geojson file. Package requires a OSW zip file path
+This package validates OSW GeoJSON datasets packaged as a ZIP file.
 
 ## System requirements
 
 | Software | Version |
 |----------|---------|
-| Python   | 3.10.x  |
+| Python   | >= 3.10 |
 
 ## What this package does?
 
-- It unzip the provided zip files
-- Check for the required nodes and edges geojson files inside the unzipped folder
-- Validate each file (edges, lines, nodes, points, polygons and zones) against the matching schema (0.3 defaults live in `src/python_osw_validation/schema`)
-- Return true or false according to validation
-- you can check the error if it returned false.
+- Extracts the provided ZIP file
+- Finds supported OSW dataset files inside the extracted directory
+- Validates each file (`edges`, `lines`, `nodes`, `points`, `polygons`, and `zones`) against the matching schema
+- Runs cross-file integrity checks such as duplicate `_id` detection and edge or zone references back to nodes
+- Returns a `ValidationResult` object with `is_valid`, `errors`, and `issues`
+
+Any subset of the six supported dataset files may be present. By default, no individual dataset file is required.
 
 ## Starting a new project with template
 
@@ -28,103 +30,105 @@ This package validates the OSW geojson file. Package requires a OSW zip file pat
 from python_osw_validation import OSWValidation
 
 validator = OSWValidation(zipfile_path='<Zip file path>')
-result = validator.validate()  
+result = validator.validate()
 print(result.is_valid)
-print(result.errors) # will return first 20 errors by default if there are errors
+print(result.errors)  # returns up to the first 20 high-level errors by default
+print(result.issues)  # per-file or per-feature issues
 
-result = validator.validate(max_errors=10)  
+result = validator.validate(max_errors=10)
 print(result.is_valid)
-print(result.errors) # will return first 10 errors depending on the max_errors parameter
-
+print(result.errors)  # returns up to the first 10 high-level errors
 ```
+
+You can also override schemas:
+
+```python
+from python_osw_validation import OSWValidation
+
+validator = OSWValidation(
+    zipfile_path='<Zip file path>',
+    schema_paths={
+        'nodes': 'path/to/opensidewalks.nodes.schema-0.3.json',
+        'edges': 'path/to/opensidewalks.edges.schema-0.3.json',
+    },
+)
+```
+
+## Supported filenames
+
+The validator accepts dataset files whose names end with one of these exact suffixes:
+
+- `.edges.geojson`
+- `.lines.geojson`
+- `.nodes.geojson`
+- `.points.geojson`
+- `.polygons.geojson`
+- `.zones.geojson`
+
+It also accepts the legacy form:
+
+- `.edges.OSW.geojson`
+- `.lines.OSW.geojson`
+- `.nodes.OSW.geojson`
+- `.points.OSW.geojson`
+- `.polygons.OSW.geojson`
+- `.zones.OSW.geojson`
+
+Examples:
+
+- `gs_metaline_falls_uga.nodes.geojson` is valid
+- `gs_yarrow_point.edges.geojson` is valid
+- `roadEdges.geojson` is invalid
+
+If a dataset uses canonical OSW 0.3 names that start with `opensidewalks.`, then only these exact names are allowed:
+
+- `opensidewalks.edges.geojson`
+- `opensidewalks.lines.geojson`
+- `opensidewalks.nodes.geojson`
+- `opensidewalks.points.geojson`
+- `opensidewalks.polygons.geojson`
+- `opensidewalks.zones.geojson`
 
 ### Testing
 
-The project is configured with `python` to figure out the coverage of the unit tests. All the tests are in `tests`
-folder.
+All unit tests are under `tests/unit_tests`.
 
-- To execute the tests, please follow the commands:
+- To execute the tests:
 
   `pip install -r requirements.txt`
 
   `python -m unittest discover -v tests/unit_tests`
 
-- To execute the code coverage, please follow the commands:
+- To execute code coverage:
 
   `coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests`
 
-  `coverage html` // Can be run after 1st command
+  `coverage html`
 
-  `coverage report` // Can be run after 1st command
+  `coverage report`
 
-- After the commands are run, you can check the coverage report in `htmlcov/index.html`. Open the file in any browser,
-  and it shows complete coverage details
-- The terminal will show the output of coverage like this
+After running coverage, open `htmlcov/index.html` to inspect the report in a browser.
 
-```shell
-
->  coverage run --source=src/python_osw_validation -m unittest discover -v tests/unit_tests
-test_duplicate_files (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_empty_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_invalid_directory (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_missing_optional_file (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_no_geojson_files (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_valid_data_at_root (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_valid_data_inside_folder (test_extracted_data_validator.TestExtractedDataValidator) ... ok
-test_edges_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_edges_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_edges_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_external_extension_file_inside_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_external_extension_file_inside_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_external_extension_file_inside_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_extra_field_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_id_missing_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_invalid_geometry_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_minimal_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_minimal_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_minimal_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_missing_identifier_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_no_entity_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_nodes_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_nodes_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_nodes_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_points_invalid_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_points_invalid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_points_invalid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_valid_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_valid_zipfile_with_invalid_schema (test_osw_validation.TestOSWValidation) ... ok
-test_valid_zipfile_with_schema (test_osw_validation.TestOSWValidation) ... ok
-test_wrong_datatypes_zipfile (test_osw_validation.TestOSWValidation) ... ok
-test_extract_invalid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
-test_extract_valid_zip (test_zipfile_handler.TestZipFileHandler) ... ok
-test_remove_extracted_files (test_zipfile_handler.TestZipFileHandler) ... ok
-
-----------------------------------------------------------------------
-Ran 37 tests in 1284.068s
-
-OK
-```
-
-## Use locally:
+## Use locally
 To use the library locally, use the [example.py](./src/example.py) code
 
-## Deployment:
+## Deployment
 
-- The library can be pushed to [TestPy](https://test.pypi.org/project/python-osw-validation/) or [PYPI](https://pypi.org/project/python-osw-validation/)
-### Deploy to TestPy
-- On every push to `dev` branch, a workflow is triggered which publishes the updated version to TestPy
+- The library can be pushed to [TestPyPI](https://test.pypi.org/project/python-osw-validation/) or [PyPI](https://pypi.org/project/python-osw-validation/)
+
+### Deploy to TestPyPI
+
+- On every push to `dev` branch, a workflow is triggered which publishes the updated version to TestPyPI
 
 ### Deploy to PyPI
-- This happens whenever a tag/release is created with `*.*.*` notation (eg. 0.0.8)
-- To change the version, change the version at [version.py](./src/python_osw_validation/version.py)
+
+- This happens whenever a tag or release is created with `*.*.*` notation, for example `0.0.8`
+- To change the version, update [version.py](./src/python_osw_validation/version.py)
 - To release a new version:
-  - Go to Github link of this repository
+  - Go to the GitHub repository
   - Under [releases](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/releases), click on `Draft a new release`
-  - Under `choose a new tag`, add a new tag `v*.*.*` , Generate Release notes
+  - Under `choose a new tag`, add a new tag `v*.*.*`, then generate release notes
   - Choose `main` branch for release
   - Publish the release.
-- This release triggers a workflow to generate the new version of the Package.
+- This release triggers a workflow to generate the new package version.
 - The new package will be available at https://pypi.org/project/python-osw-validation/
