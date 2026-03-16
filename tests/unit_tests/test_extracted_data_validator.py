@@ -69,6 +69,12 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertTrue(validator.is_valid())
         self.assertEqual(len(validator.files), 1)
 
+    def test_valid_legacy_osw_suffix_files(self):
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['wa.microsoft.graph.nodes.OSW.geojson', 'wa.microsoft.graph.edges.OSW.geojson'])
+        self.assertTrue(validator.is_valid())
+        self.assertEqual(len(validator.files), 2)
+
     def test_non_standard_filenames_raise_error(self):
         validator = ExtractedDataValidator(self.test_dir)
         self.create_files(['custom.nodes.geojson', 'opensidewalks.nodes.geojson'])
@@ -106,6 +112,16 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: something_else.geojson. '
+            'Allowed file names are *.{edges, nodes, points, lines, zones, polygons}.geojson'
+        )
+
+    def test_glued_dataset_names_are_rejected(self):
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['roadedges.geojson', 'roadnodes.geojson'])
+        self.assertFalse(validator.is_valid())
+        self.assertEqual(
+            validator.error,
+            'Unsupported .geojson files present: roadedges.geojson, roadnodes.geojson. '
             'Allowed file names are *.{edges, nodes, points, lines, zones, polygons}.geojson'
         )
 

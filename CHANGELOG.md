@@ -1,5 +1,11 @@
 # Change log
 
+### 0.3.5 - 2026-03-16
+- Fixed filename-based schema selection to use exact dataset suffixes such as `.nodes.geojson`, `.edges.geojson`, and the legacy `.nodes.OSW.geojson` form instead of loose substring matching.
+- Prevented false schema selection for filenames with misleading prefixes such as `gs_metaline_falls_uga.nodes.geojson` and `gs_yarrow_point.edges.geojson`.
+- Updated extracted dataset filename validation to enforce the same suffix-based rules and reject glued names such as `roadEdges.geojson`.
+- Added regression coverage for suffix-based filename matching and refreshed the README to document current ZIP input, validation output, and supported filename patterns.
+
 ### 0.3.4 - 2026-02-04
 - Update leaf_cycle enums in 0.3 lines/points/polygons schemas and add coverage for the new allowed values.
 - Add unit tests that validate acceptance/rejection of leaf_cycle values with the 0.3 schemas.

@@ -48,6 +48,20 @@ _FILENAME_TO_KEY = {
 }
 
 
+def _matches_dataset_filename(basename: str, dataset_key: str) -> bool:
+    lower_name = basename.lower()
+    if not lower_name.endswith(".geojson"):
+        return False
+
+    stem = lower_name[:-len(".geojson")]
+    return (
+        stem == dataset_key
+        or stem == f"{dataset_key}.osw"
+        or stem.endswith(f".{dataset_key}")
+        or stem.endswith(f".{dataset_key}.osw")
+    )
+
+
 class ExtractedDataValidator:
     def __init__(self, extracted_dir: str):
         self.extracted_dir = extracted_dir
@@ -100,7 +114,7 @@ class ExtractedDataValidator:
 
         allowed_keys = tuple(OSW_DATASET_FILES.keys())
         unsupported_files = sorted(
-            {bn for bn in basenames if not any(key in bn for key in allowed_keys)}
+            {bn for bn in basenames if not any(_matches_dataset_filename(bn, key) for key in allowed_keys)}
         )
         if unsupported_files:
             allowed_fmt = ", ".join(allowed_keys)
@@ -121,7 +135,7 @@ class ExtractedDataValidator:
                 file_count = 0
                 for filename in geojson_files:
                     base_name = os.path.basename(filename)
-                    if required_file in base_name and base_name.endswith('.geojson'):
+                    if _matches_dataset_filename(base_name, required_file):
                         file_count += 1
                         save_filename = filename
                 if file_count == 0:
@@ -138,7 +152,7 @@ class ExtractedDataValidator:
                 file_count = 0
                 for filename in geojson_files:
                     base_name = os.path.basename(filename)
-                    if optional_file in base_name and base_name.endswith('.geojson'):
+                    if _matches_dataset_filename(base_name, optional_file):
                         file_count += 1
                         save_filename = filename
                 if file_count == 1:
