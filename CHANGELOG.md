@@ -1,5 +1,10 @@
 # Change log
 
+### 0.3.6 - 2026-04-10
+- Fixed https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/3469
+- Added regression coverage for `tests/assets/task_3469.zip` to assert the exact per-feature `issues` payload: `"null" is not one of "down" or "up"` on `FIFA_sidewalks.edges.geojson` feature index `0`.
+- Aligned package dependency pins by updating `setup.py` to `jsonschema_rs==0.33.0` (matching `requirements.txt`).
+
 ### 0.3.5 - 2026-03-16
 - Fixed filename-based schema selection to use exact dataset suffixes such as `.nodes.geojson`, `.edges.geojson`, and the legacy `.nodes.OSW.geojson` form instead of loose substring matching.
 - Prevented false schema selection for filenames with misleading prefixes such as `gs_metaline_falls_uga.nodes.geojson` and `gs_yarrow_point.edges.geojson`.
