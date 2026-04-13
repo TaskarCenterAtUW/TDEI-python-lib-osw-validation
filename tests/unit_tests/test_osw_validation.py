@@ -38,6 +38,7 @@ class TestOSWValidation(unittest.TestCase):
         self.invalid_zones_file = os.path.join(ASSETS_PATH, 'UW.zones.invalid.zip')
         self.valid_osw_file = os.path.join(ASSETS_PATH, 'wa.bellevue.zip')
         self.invalid_v_id_file = os.path.join(ASSETS_PATH, '4151.zip')
+        self.task_3469_file = os.path.join(ASSETS_PATH, 'task_3469.zip')
         self.serialization_file = os.path.join(ASSETS_PATH, 'test_serialization_error.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.schema_paths = SCHEMA_PATHS
@@ -266,6 +267,31 @@ class TestOSWValidation(unittest.TestCase):
 
         # Ensure the total count is mentioned
         self.assertIn('Showing 20 out of', error_message)
+
+    def test_task_3469_issue_payload(self):
+        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertEqual(
+            result.issues,
+            [{
+                'filename': 'FIFA_sidewalks.edges.geojson',
+                'feature_index': 0,
+                'error_message': ['"null" is not one of "down" or "up"'],
+            }]
+        )
+
+    def test_jsonschema_rs_pin_is_0_33_0(self):
+        requirements_path = os.path.join(SRC_DIR, 'requirements.txt')
+        setup_path = os.path.join(SRC_DIR, 'setup.py')
+
+        with open(requirements_path, 'r', encoding='utf-8') as f:
+            requirements_content = f.read()
+        with open(setup_path, 'r', encoding='utf-8') as f:
+            setup_content = f.read()
+
+        self.assertIn('jsonschema_rs==0.33.0', requirements_content)
+        self.assertIn('jsonschema_rs==0.33.0', setup_content)
 
 
 if __name__ == '__main__':
