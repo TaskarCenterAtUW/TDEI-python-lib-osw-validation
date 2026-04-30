@@ -39,6 +39,7 @@ class TestOSWValidation(unittest.TestCase):
         self.valid_osw_file = os.path.join(ASSETS_PATH, 'wa.bellevue.zip')
         self.invalid_v_id_file = os.path.join(ASSETS_PATH, '4151.zip')
         self.task_3469_file = os.path.join(ASSETS_PATH, 'task_3469.zip')
+        self.issue_3297_file = os.path.join(ASSETS_PATH, 'issue_3297.zip')
         self.serialization_file = os.path.join(ASSETS_PATH, 'test_serialization_error.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.schema_paths = SCHEMA_PATHS
@@ -270,16 +271,36 @@ class TestOSWValidation(unittest.TestCase):
 
     def test_task_3469_issue_payload(self):
         validation = OSWValidation(zipfile_path=self.task_3469_file)
-        result = validation.validate()
+        result = validation.validate(max_errors=500)
         self.assertFalse(result.is_valid)
-        self.assertEqual(
-            result.issues,
-            [{
-                'filename': 'FIFA_sidewalks.edges.geojson',
-                'feature_index': 0,
-                'error_message': ['"null" is not one of "down" or "up"'],
-            }]
-        )
+        self.assertIsInstance(result.issues, list)
+        self.assertGreater(len(result.issues), 0)
+        flattened = " | ".join(issue["error_message"][0] for issue in result.issues)
+        self.assertIn("Invalid value at 'climb': \"null\".", flattened)
+
+    def test_issues_respect_max_errors_override(self):
+        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        default_result = validation.validate()
+        self.assertFalse(default_result.is_valid)
+        self.assertEqual(len(default_result.issues), 20)
+
+        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        override_result = validation.validate(max_errors=500)
+        self.assertFalse(override_result.is_valid)
+        self.assertGreater(len(override_result.issues), 20)
+
+    def test_issue_3297_issue_payload(self):
+        validation = OSWValidation(zipfile_path=self.issue_3297_file)
+        result = validation.validate(max_errors=100)
+        self.assertFalse(result.is_valid)
+        self.assertEqual(len(result.issues), 3)
+
+        flattened = " | ".join(issue["error_message"][0] for issue in result.issues)
+        self.assertIn("Invalid value at 'climb': 'abc'.", flattened)
+        self.assertIn("Acceptable values can be one of down|up", flattened)
+        self.assertIn("Invalid value at 'crossing:markings': 'sss'.", flattened)
+        self.assertIn("Acceptable values can be one of dashes|dots|ladder|ladder:paired|ladder:skewed| and 14 more", flattened)
+        self.assertIn("Invalid value at 'step_count': 'test' . Acceptable datatype is integer ; provide a valid value and retry", flattened)
 
     def test_jsonschema_rs_pin_is_0_33_0(self):
         requirements_path = os.path.join(SRC_DIR, 'requirements.txt')

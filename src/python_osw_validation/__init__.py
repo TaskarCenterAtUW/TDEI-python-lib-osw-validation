@@ -1,6 +1,7 @@
 import os
 import gc
 import json
+import math
 import traceback
 from typing import Dict, Any, Optional, List, Tuple
 import geopandas as gpd
@@ -11,9 +12,9 @@ from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES
 from .version import __version__
 from .helpers import (
     _add_additional_properties_hint,
+    _err_kind,
     _feature_index_from_error,
     _pretty_message,
-    _rank_for,
 )
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
@@ -129,6 +130,29 @@ class OSWValidation:
 
         return None
 
+    def _is_nullish_value(self, value: Any) -> bool:
+        if value is None:
+            return True
+        if isinstance(value, str) and value.strip().lower() in {"null", "nan"}:
+            return True
+        return isinstance(value, float) and math.isnan(value)
+
+    def _collect_nullish_property_paths(self, obj: Any, prefix: str = "") -> List[Tuple[str, Any]]:
+        paths: List[Tuple[str, Any]] = []
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                next_prefix = f"{prefix}.{key}" if prefix else str(key)
+                paths.extend(self._collect_nullish_property_paths(value, next_prefix))
+            return paths
+        if isinstance(obj, list):
+            for idx, value in enumerate(obj):
+                next_prefix = f"{prefix}[{idx}]" if prefix else f"[{idx}]"
+                paths.extend(self._collect_nullish_property_paths(value, next_prefix))
+            return paths
+        if self._is_nullish_value(obj):
+            paths.append((prefix or "value", obj))
+        return paths
+
     def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> set:
         """Detect Tree coverage or Custom content in legacy 0.2 datasets.
 
@@ -197,6 +221,12 @@ class OSWValidation:
     # Core validation entrypoint
     # ----------------------------
     def validate(self, max_errors=20) -> ValidationResult:
+        def _finalize(is_valid: bool, errors: Optional[List[str]] = None) -> ValidationResult:
+            final_errors = self.errors if errors is None else errors
+            final_errors = (final_errors or [])[:max_errors]
+            final_issues = (self.issues or [])[:max_errors]
+            return ValidationResult(is_valid, final_errors, final_issues)
+
         zip_handler = None
         OSW_DATASET: Dict[str, Optional[gpd.GeoDataFrame]] = {}
         validator = None
@@ -211,7 +241,7 @@ class OSWValidation:
                     filename=self.zipfile_path,
                     feature_index=None
                 )
-                return ValidationResult(False, self.errors, self.issues)
+                return _finalize(False)
 
             # Validate the folder structure
             validator = ExtractedDataValidator(self.extracted_dir)
@@ -222,7 +252,7 @@ class OSWValidation:
                     filename=upload_name,
                     feature_index=None
                 )
-                return ValidationResult(False, self.errors, self.issues)
+                return _finalize(False)
 
             # Per-file schema validation → populate self.issues (fixme-like)
             for file in validator.files:
@@ -232,7 +262,7 @@ class OSWValidation:
                     break
 
             if self.errors:
-                return ValidationResult(False, self.errors, self.issues)
+                return _finalize(False)
 
             # Load GeoDataFrames for integrity checks
             for file in validator.files:
@@ -414,9 +444,9 @@ class OSWValidation:
                     break
 
             if self.errors:
-                return ValidationResult(False, self.errors, self.issues)
+                return _finalize(False)
             else:
-                return ValidationResult(True, [], self.issues)
+                return _finalize(True, [])
 
         except Exception as e:
             self.log_errors(
@@ -425,7 +455,7 @@ class OSWValidation:
                 feature_index=None
             )
             traceback.print_exc()
-            return ValidationResult(False, self.errors, self.issues)
+            return _finalize(False)
         finally:
             # Cleanup extracted files
             try:
@@ -488,6 +518,37 @@ class OSWValidation:
         except OSError:
             return False
 
+        filename = os.path.basename(file_path)
+
+        # Upfront guard: reject null/NaN values in feature properties.
+        # This runs before schema validation to surface data quality issues first.
+        features = geojson_data.get("features", []) if isinstance(geojson_data, dict) else []
+        found_nullish = False
+        for idx, feature in enumerate(features):
+            if not isinstance(feature, dict):
+                continue
+            props = feature.get("properties")
+            if not isinstance(props, dict):
+                continue
+            bad_paths = self._collect_nullish_property_paths(props)
+            for path, bad_value in bad_paths:
+                if len(self.errors) >= max_errors:
+                    return False
+                found_nullish = True
+                rendered = f'"{bad_value}"' if isinstance(bad_value, str) else str(bad_value)
+                msg = (
+                    f"Invalid value at '{path}': {rendered}. "
+                    f"Null/NaN placeholders are not allowed; provide a valid value or remove this property."
+                )
+                self.errors.append(f"Validation error: {msg}")
+                self.issues.append({
+                    "filename": filename,
+                    "feature_index": idx,
+                    "error_message": [msg],
+                })
+        if found_nullish:
+            return False
+
         schema_url = geojson_data.get('$schema')
         if isinstance(schema_url, str) and '0.2/schema.json' in schema_url:
             reasons = self._contains_disallowed_features_for_02(geojson_data)
@@ -518,15 +579,9 @@ class OSWValidation:
         schema = self.load_osw_schema(schema_path)
         validator = jsonschema_rs.Draft7Validator(schema)
 
-        filename = os.path.basename(file_path)
-
-        # Per-feature best error accumulator (streaming)
-        #   feature_idx -> (rank_tuple, error_obj)
-        best_by_feature: Dict[Optional[int], Tuple[tuple, Any]] = {}
-        feature_order: List[Optional[int]] = []  # preserve first-seen order
-
         # Legacy cap
         legacy_count = 0
+        collected_issues: List[Dict[str, Any]] = []
 
         # --- STREAM over errors; STOP as soon as legacy hits the cap ---
         for err in validator.iter_errors(geojson_data):
@@ -539,26 +594,28 @@ class OSWValidation:
                 # We've reached the legacy cap; stop work to match original performance
                 break
 
-            # Track the best error per feature
+            # Keep every issue (no per-feature collapsing)
             fidx = _feature_index_from_error(err)
-            r = _rank_for(err)
-            prev = best_by_feature.get(fidx)
-            if prev is None:
-                best_by_feature[fidx] = (r, err)
-                feature_order.append(fidx)
-            else:
-                if r < prev[0]:
-                    best_by_feature[fidx] = (r, err)
-
-        # Build per-feature issues (one concise message per feature) in first-seen order
-        for fidx in feature_order:
-            _, best_err = best_by_feature[fidx]
-            pretty = _pretty_message(best_err, schema)
-            self.issues.append({
+            collected_issues.append({
                 "filename": filename,
                 "feature_index": fidx if fidx is not None else -1,
-                "error_message": [pretty],
+                "error_message": [_pretty_message(err, schema)],
+                "_kind": _err_kind(err),
             })
+
+        # Drop noisy AnyOf summaries when specific field-level errors exist
+        # for the same feature.
+        has_specific_by_feature: Dict[int, bool] = {}
+        for issue in collected_issues:
+            fidx = issue["feature_index"]
+            if issue.get("_kind") != "AnyOf":
+                has_specific_by_feature[fidx] = True
+
+        for issue in collected_issues:
+            if issue.get("_kind") == "AnyOf" and has_specific_by_feature.get(issue["feature_index"], False):
+                continue
+            issue.pop("_kind", None)
+            self.issues.append(issue)
 
         # Mirror original boolean behavior: False when we exactly hit the cap
         return len(self.errors) < max_errors

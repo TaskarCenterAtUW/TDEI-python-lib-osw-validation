@@ -73,11 +73,15 @@ class TestCleanEnumMessage(unittest.TestCase):
 
 # ----- tests for _pretty_message ----------------------------------------------
 class TestPrettyMessage(unittest.TestCase):
-    def test_enum_compacts_message(self):
+    def test_enum_formats_human_readable_field_message(self):
         KindEnum = type("Kind_Enum", (), {})
         e = FakeErr(kind=KindEnum(),
-                    message="not in allowed set or 3 other candidates\nignore this")
-        self.assertEqual(helpers._pretty_message(e, schema={}), "not in allowed set")
+                    instance_path=["features", 0, "properties", "climb"],
+                    message='"null" is not one of "down" or "up" or 3 other candidates\nignore this')
+        self.assertEqual(
+            helpers._pretty_message(e, schema={}),
+            "Invalid value at 'climb': 'null'. Acceptable values can be one of down|up, provide a valid value and retry again.",
+        )
 
     def test_anyof_unions_required_fields(self):
         # Build a schema reachable via schema_path with anyOf/allOf nesting
@@ -110,6 +114,40 @@ class TestPrettyMessage(unittest.TestCase):
         e = FakeErr(kind=None, validator=None, message="first line only\nsecond line ignored")
         self.assertEqual(helpers._pretty_message(e, schema={}), "first line only")
 
+    def test_type_with_enum_parent_uses_enum_style_message(self):
+        KindType = type("Kind_Type", (), {})
+        schema = {
+            "properties": {
+                "climb": {
+                    "enum": ["down", "up"],
+                    "type": "string",
+                }
+            }
+        }
+        e = FakeErr(
+            kind=KindType(),
+            instance_path=["features", 0, "properties", "climb"],
+            schema_path=["properties", "climb", "type"],
+            message='"null" is not of type "string"',
+        )
+        self.assertEqual(
+            helpers._pretty_message(e, schema=schema),
+            "Invalid value at 'climb': 'null'. Acceptable values can be one of down|up, provide a valid value and retry again.",
+        )
+
+    def test_type_formats_requires_value_message(self):
+        KindType = type("Kind_Type", (), {})
+        e = FakeErr(
+            kind=KindType(),
+            instance_path=["features", 0, "properties", "step_count"],
+            schema_path=["properties", "step_count", "type"],
+            message='"null" is not of type "integer"',
+        )
+        self.assertEqual(
+            helpers._pretty_message(e, schema={"properties": {"step_count": {"type": "integer"}}}),
+            "Invalid value at 'step_count': 'null' . Acceptable datatype is integer ; provide a valid value and retry",
+        )
+
     def test_additional_properties_hint_is_applied(self):
         msg = "Additional properties are not allowed ('bar' was unexpected)"
         e = FakeErr(kind=None, validator=None, message=msg)
@@ -130,8 +168,8 @@ class TestRankFor(unittest.TestCase):
         e_pat = FakeErr(kind=KPat(), message="m3")
         e_other = FakeErr(kind=KOther(), message="m4")
 
-        self.assertLess(helpers._rank_for(e_enum), helpers._rank_for(e_req))
-        self.assertLess(helpers._rank_for(e_req), helpers._rank_for(e_pat))
+        self.assertLess(helpers._rank_for(e_req), helpers._rank_for(e_enum))
+        self.assertLess(helpers._rank_for(e_enum), helpers._rank_for(e_pat))
         self.assertLess(helpers._rank_for(e_pat), helpers._rank_for(e_other))
 
     def test_tiebreaker_shorter_message_is_better(self):
