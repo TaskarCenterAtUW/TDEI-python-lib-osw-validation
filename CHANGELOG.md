@@ -1,5 +1,13 @@
 # Change log
 
+### 0.3.7 - 2026-04-29
+- Added upfront null/NaN placeholder detection before schema validation, including support for string placeholders such as `"null"` and `"nan"` in feature `properties`.
+- Changed `issues` behavior to return all detected per-feature schema issues (not only a single best issue per feature).
+- Suppressed noisy `AnyOf` summary messages when more specific field-level errors exist for the same feature.
+- Improved human-readable validation messages for enum/type failures with clearer field-level context and actionable remediation text.
+- Updated enum formatting to use compact previews for long value lists (pipe-separated values with `and N more` suffix).
+- Added new regression coverage for `tests/assets/issue_3297.zip` and updated related unit test expectations for new message formats and nullish precheck flow.
+
 ### 0.3.6 - 2026-04-10
 - Fixed https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/3469
 - Added regression coverage for `tests/assets/task_3469.zip` to assert the exact per-feature `issues` payload: `"null" is not one of "down" or "up"` on `FIFA_sidewalks.edges.geojson` feature index `0`.

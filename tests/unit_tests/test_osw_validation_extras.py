@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+import math
 from unittest.mock import patch, MagicMock
 import pandas as pd
 import geopandas as gpd
@@ -90,6 +91,38 @@ class TestOSWValidationExtras(unittest.TestCase):
         issue = res.issues[0]
         self.assertEqual(issue["filename"], os.path.basename(upload_path))
         self.assertIn("bad structure", issue["error_message"])
+
+    def test_nullish_values_fail_before_schema_validation(self):
+        validator = OSWValidation(zipfile_path="dummy.zip")
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "step_count": None,
+                        "width": math.nan,
+                    },
+                    "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+                }
+            ],
+        }
+
+        with patch.object(validator, "load_osw_file", return_value=geojson_data), \
+             patch.object(validator, "pick_schema_for_file") as pick_schema_mock:
+            ok = validator.validate_osw_errors("/tmp/FIFA_sidewalks.edges.geojson", max_errors=20)
+
+        self.assertFalse(ok)
+        pick_schema_mock.assert_not_called()
+        self.assertEqual(len(validator.issues), 2)
+        self.assertEqual(
+            validator.issues[0]["error_message"],
+            ["Invalid value at 'step_count': None. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+        )
+        self.assertEqual(
+            validator.issues[1]["error_message"],
+            ["Invalid value at 'width': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+        )
 
     def test_missing_u_id_reports_error_without_keyerror(self):
         """Edges missing `_u_id` should report a friendly error instead of raising KeyError."""

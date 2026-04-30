@@ -13,6 +13,7 @@ This package validates OSW GeoJSON datasets packaged as a ZIP file.
 - Extracts the provided ZIP file
 - Finds supported OSW dataset files inside the extracted directory
 - Validates each file (`edges`, `lines`, `nodes`, `points`, `polygons`, and `zones`) against the matching schema
+- Performs an upfront data-quality check for null-like placeholders in feature properties (for example `null`, `NaN`, `"null"`, `"nan"`)
 - Runs cross-file integrity checks such as duplicate `_id` detection and edge or zone references back to nodes
 - Returns a `ValidationResult` object with `is_valid`, `errors`, and `issues`
 
@@ -33,12 +34,23 @@ validator = OSWValidation(zipfile_path='<Zip file path>')
 result = validator.validate()
 print(result.is_valid)
 print(result.errors)  # returns up to the first 20 high-level errors by default
-print(result.issues)  # per-file or per-feature issues
+print(result.issues)  # detailed per-feature issues, capped to first 20 by default
 
 result = validator.validate(max_errors=10)
 print(result.is_valid)
 print(result.errors)  # returns up to the first 10 high-level errors
+print(result.issues)  # capped by the same max_errors limit
 ```
+
+## Error behavior
+
+- `errors`: high-level validation messages, capped by `max_errors` (default `20`).
+- `issues`: detailed per-feature validation issues, also capped by `max_errors`.
+- If null-like placeholders are found in feature `properties`, validation fails early before schema checks with actionable messages such as:
+  - `Invalid value at 'climb': 'null'. Null/NaN placeholders are not allowed; provide a valid value or remove this property.`
+- For enum validation, long allowed-value lists are summarized as:
+  - first 5 values joined by `|`
+  - followed by `| and N more` when applicable.
 
 You can also override schemas:
 
