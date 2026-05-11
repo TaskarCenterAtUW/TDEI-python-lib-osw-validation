@@ -44,6 +44,11 @@ class TestOSWValidation(unittest.TestCase):
         self.schema_file_path = SCHEMA_FILE_PATH
         self.schema_paths = SCHEMA_PATHS
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
+        # Geometry mapping fixtures
+        self.geom_mapping_valid = os.path.join(ASSETS_PATH, 'geom_mapping_valid.zip')
+        self.edge_u_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_u_id_coord_mismatch.zip')
+        self.edge_v_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_v_id_coord_mismatch.zip')
+        self.zone_w_id_coord_mismatch = os.path.join(ASSETS_PATH, 'zone_w_id_coord_mismatch.zip')
 
     def test_valid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.valid_zipfile)
@@ -301,6 +306,73 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIn("Invalid value at 'crossing:markings': 'sss'.", flattened)
         self.assertIn("Acceptable values can be one of dashes|dots|ladder|ladder:paired|ladder:skewed| and 14 more", flattened)
         self.assertIn("Invalid value at 'step_count': 'test' . Acceptable datatype is integer ; provide a valid value and retry", flattened)
+
+    # ------------------------------------------------------------------
+    # Geometry mapping tests (v0.4.0)
+    # ------------------------------------------------------------------
+
+    def test_geom_mapping_valid_passes(self):
+        """Dataset where edge endpoints exactly match their referenced node coordinates."""
+        validation = OSWValidation(zipfile_path=self.geom_mapping_valid)
+        result = validation.validate()
+        self.assertTrue(result.is_valid, f"Expected valid; errors={result.errors}")
+        self.assertIsNone(result.errors)
+
+    def test_edge_u_id_coord_mismatch_fails(self):
+        """Edge whose start coordinate does not match the _u_id node is rejected."""
+        validation = OSWValidation(zipfile_path=self.edge_u_id_coord_mismatch)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        mismatch_err = next((e for e in result.errors if '_u_id mismatch' in e), None)
+        self.assertIsNotNone(mismatch_err, f"Expected _u_id mismatch error; got: {result.errors}")
+        # The error must name the offending edge and reference the node ID
+        self.assertIn('e2', mismatch_err)
+        self.assertIn('n1', mismatch_err)
+
+    def test_edge_u_id_coord_mismatch_issue_has_feature_index(self):
+        """Geometry mapping issues include filename and feature_index."""
+        validation = OSWValidation(zipfile_path=self.edge_u_id_coord_mismatch)
+        result = validation.validate()
+        mismatch_issue = next(
+            (i for i in (result.issues or []) if '_u_id mismatch' in i.get('error_message', '')),
+            None,
+        )
+        self.assertIsNotNone(mismatch_issue)
+        self.assertEqual(mismatch_issue['filename'], 'edges')
+        self.assertIsNotNone(mismatch_issue['feature_index'])
+
+    def test_edge_v_id_coord_mismatch_fails(self):
+        """Edge whose end coordinate does not match the _v_id node is rejected."""
+        validation = OSWValidation(zipfile_path=self.edge_v_id_coord_mismatch)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        mismatch_err = next((e for e in result.errors if '_v_id mismatch' in e), None)
+        self.assertIsNotNone(mismatch_err, f"Expected _v_id mismatch error; got: {result.errors}")
+        self.assertIn('n2', mismatch_err)
+
+    def test_zone_w_id_coord_mismatch_fails(self):
+        """Zone whose _w_id node coordinate is not a polygon vertex is rejected."""
+        validation = OSWValidation(zipfile_path=self.zone_w_id_coord_mismatch)
+        result = validation.validate()
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
+        mismatch_err = next((e for e in result.errors if '_w_id coordinate mismatch' in e), None)
+        self.assertIsNotNone(mismatch_err, f"Expected _w_id mismatch error; got: {result.errors}")
+        self.assertIn('w4', mismatch_err)
+
+    def test_zone_w_id_coord_mismatch_issue_has_feature_index(self):
+        """Zone geometry mapping issues include filename and feature_index."""
+        validation = OSWValidation(zipfile_path=self.zone_w_id_coord_mismatch)
+        result = validation.validate()
+        mismatch_issue = next(
+            (i for i in (result.issues or []) if '_w_id coordinate mismatch' in i.get('error_message', '')),
+            None,
+        )
+        self.assertIsNotNone(mismatch_issue)
+        self.assertEqual(mismatch_issue['filename'], 'zones')
+        self.assertIsNotNone(mismatch_issue['feature_index'])
 
     def test_jsonschema_rs_pin_is_0_33_0(self):
         requirements_path = os.path.join(SRC_DIR, 'requirements.txt')

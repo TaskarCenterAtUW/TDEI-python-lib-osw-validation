@@ -1,5 +1,12 @@
 # Change log
 
+### 0.4.0 - 2026-04-30
+- Added geometry mapping consistency validation: `_u_id` and `_v_id` references in edges are now verified against the actual start/end coordinates of the referenced node geometries.
+- Added `_w_id` coordinate mapping validation for zones: each referenced node coordinate must be a vertex of the zone's polygon exterior ring, in order.
+- Validation errors for coordinate mismatches include file name, feature index, feature ID, referenced node ID, node coordinate, and the actual edge/ring coordinate for actionable debugging.
+- New standalone module `geometry_mapping_validator.py` (pure Python, no heavy dependencies) provides `run_geometry_mapping_validation`, `validate_edge_node_mapping`, `validate_zone_node_mapping`, and `build_node_coord_index`.
+- Added comprehensive test coverage in `tests/unit_tests/test_geometry_mapping_validator.py`.
+
 ### 0.3.7 - 2026-04-29
 - Added upfront null/NaN placeholder detection before schema validation, including support for string placeholders such as `"null"` and `"nan"` in feature `properties`.
 - Changed `issues` behavior to return all detected per-feature schema issues (not only a single best issue per feature).

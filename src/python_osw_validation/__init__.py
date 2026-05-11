@@ -2,7 +2,6 @@ import os
 import gc
 import json
 import math
-import traceback
 from typing import Dict, Any, Optional, List, Tuple
 import geopandas as gpd
 import jsonschema_rs
@@ -111,6 +110,156 @@ class OSWValidation:
             except Exception:
                 self.log_errors(f"Could not create set for column '{col}' in {filekey}.", filekey, None)
                 return set()
+
+    # ----------------------------
+    # Geometry mapping helpers
+    # ----------------------------
+
+    _COORD_TOLERANCE = 1e-7  # ~1 cm at equator
+
+    def _coords_match(self, c1: tuple, c2: tuple) -> bool:
+        return abs(c1[0] - c2[0]) <= self._COORD_TOLERANCE and abs(c1[1] - c2[1]) <= self._COORD_TOLERANCE
+
+    def _build_node_coord_map(self, nodes_df: gpd.GeoDataFrame) -> Dict[Any, tuple]:
+        """Return {node_id: (lon, lat)} from a nodes GeoDataFrame."""
+        coord_map: Dict[Any, tuple] = {}
+        for _, row in nodes_df.iterrows():
+            try:
+                nid = row['_id']
+            except KeyError:
+                continue
+            geom = row.geometry
+            if nid is not None and geom is not None and geom.geom_type == 'Point':
+                coord_map[nid] = (geom.x, geom.y)
+        return coord_map
+
+    def _validate_edge_geometry_mapping(
+        self,
+        edges_df: Optional[gpd.GeoDataFrame],
+        node_coord_map: Dict[Any, tuple],
+        max_errors: int,
+    ) -> None:
+        """Verify edge start/end coordinates match their _u_id/_v_id node geometries."""
+        if edges_df is None or not node_coord_map:
+            return
+
+        has_u_id = '_u_id' in edges_df.columns
+        has_v_id = '_v_id' in edges_df.columns
+        if not (has_u_id or has_v_id):
+            return
+
+        for feat_idx, row in edges_df.iterrows():
+            if len(self.errors) >= max_errors:
+                break
+
+            geom = row.geometry
+            if geom is None or geom.geom_type != 'LineString':
+                continue
+
+            coords = list(geom.coords)
+            if not coords:
+                continue
+
+            try:
+                edge_id = row['_id']
+            except KeyError:
+                edge_id = feat_idx
+
+            if has_u_id:
+                try:
+                    u_id = row['_u_id']
+                except KeyError:
+                    u_id = None
+                if u_id is not None and u_id in node_coord_map:
+                    node_coord = node_coord_map[u_id]
+                    edge_start = (coords[0][0], coords[0][1])
+                    if not self._coords_match(edge_start, node_coord):
+                        self.log_errors(
+                            message=(
+                                f"edges id '{edge_id}' : "
+                                f"start coordinate {edge_start} does not match "
+                                f"node id '{u_id}' coordinate {node_coord} (_u_id mismatch)."
+                            ),
+                            filename='edges',
+                            feature_index=feat_idx,
+                        )
+
+            if len(self.errors) >= max_errors:
+                break
+
+            if has_v_id:
+                try:
+                    v_id = row['_v_id']
+                except KeyError:
+                    v_id = None
+                if v_id is not None and v_id in node_coord_map:
+                    node_coord = node_coord_map[v_id]
+                    edge_end = (coords[-1][0], coords[-1][1])
+                    if not self._coords_match(edge_end, node_coord):
+                        self.log_errors(
+                            message=(
+                                f"edges id '{edge_id}' : "
+                                f"end coordinate {edge_end} does not match "
+                                f"node id '{v_id}' coordinate {node_coord} (_v_id mismatch)."
+                            ),
+                            filename='edges',
+                            feature_index=feat_idx,
+                        )
+
+    def _validate_zone_geometry_mapping(
+        self,
+        zones_df: Optional[gpd.GeoDataFrame],
+        node_coord_map: Dict[Any, tuple],
+        max_errors: int,
+    ) -> None:
+        """Verify each _w_id node coordinate is a vertex of the zone's polygon exterior ring."""
+        if zones_df is None or not node_coord_map:
+            return
+
+        if '_w_id' not in zones_df.columns:
+            return
+
+        for feat_idx, row in zones_df.iterrows():
+            if len(self.errors) >= max_errors:
+                break
+
+            geom = row.geometry
+            if geom is None or geom.geom_type != 'Polygon':
+                continue
+
+            try:
+                zone_id = row['_id']
+            except KeyError:
+                zone_id = feat_idx
+
+            ring_coords = {(c[0], c[1]) for c in geom.exterior.coords}
+
+            try:
+                w_ids = row['_w_id']
+            except KeyError:
+                continue
+
+            if w_ids is None:
+                continue
+            if not isinstance(w_ids, (list, tuple)):
+                w_ids = [w_ids]
+
+            for w_id in w_ids:
+                if len(self.errors) >= max_errors:
+                    break
+                if w_id is None or w_id not in node_coord_map:
+                    continue
+                node_coord = node_coord_map[w_id]
+                if not any(self._coords_match(node_coord, rc) for rc in ring_coords):
+                    self.log_errors(
+                        message=(
+                            f"zones id '{zone_id}' : "
+                            f"node id '{w_id}' coordinate {node_coord} is not a vertex "
+                            f"of the zone polygon geometry (_w_id coordinate mismatch)."
+                        ),
+                        filename='zones',
+                        feature_index=feat_idx,
+                    )
 
     def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
         """Return dataset key from exact filename suffixes only."""
@@ -370,6 +519,13 @@ class OSWValidation:
                         feature_index=None
                     )
 
+            # Geometry mapping: coordinate consistency using already-loaded GeoDataFrames
+            if nodes_df is not None and len(self.errors) < max_errors:
+                node_coord_map = self._build_node_coord_map(nodes_df)
+                if node_coord_map:
+                    self._validate_edge_geometry_mapping(edges_df, node_coord_map, max_errors)
+                    self._validate_zone_geometry_mapping(zones_df, node_coord_map, max_errors)
+
             # Geometry validation: check geometry type and SFA validity
             for osw_file, gdf in OSW_DATASET.items():
                 if gdf is None:
@@ -454,7 +610,6 @@ class OSWValidation:
                 filename=None,
                 feature_index=None
             )
-            traceback.print_exc()
             return _finalize(False)
         finally:
             # Cleanup extracted files

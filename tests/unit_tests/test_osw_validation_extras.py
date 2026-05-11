@@ -1034,5 +1034,230 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             self.assertIn("Showing 20 out of 25", msg)
 
 
+class TestGeometryMappingViaValidate(unittest.TestCase):
+    """Unit tests for _u_id/_v_id/_w_id coordinate mapping through validate()."""
+
+    # ---- GeoDataFrame helpers ----
+
+    def _nodes_gdf(self, id_coord_pairs):
+        """[(id, x, y), ...] → GeoDataFrame of Point nodes."""
+        return gpd.GeoDataFrame(
+            {
+                "_id": [p[0] for p in id_coord_pairs],
+                "geometry": [Point(p[1], p[2]) for p in id_coord_pairs],
+            },
+            geometry="geometry", crs="EPSG:4326",
+        )
+
+    def _edges_gdf(self, rows):
+        """[(_id, _u_id, _v_id, coords), ...] → GeoDataFrame of LineString edges."""
+        return gpd.GeoDataFrame(
+            {
+                "_id": [r[0] for r in rows],
+                "_u_id": [r[1] for r in rows],
+                "_v_id": [r[2] for r in rows],
+                "geometry": [LineString(r[3]) for r in rows],
+            },
+            geometry="geometry", crs="EPSG:4326",
+        )
+
+    def _zones_gdf(self, rows):
+        """[(_id, w_ids, ring), ...] → GeoDataFrame of Polygon zones."""
+        return gpd.GeoDataFrame(
+            {
+                "_id": [r[0] for r in rows],
+                "_w_id": [r[1] for r in rows],
+                "geometry": [Polygon(r[2]) for r in rows],
+            },
+            geometry="geometry", crs="EPSG:4326",
+        )
+
+    def _patch_env(self, fake_files, read_side_effect):
+        """Return a context manager tuple for patching zip+validator+read_file."""
+        z = MagicMock()
+        z.extract_zip.return_value = "/tmp/extracted"
+        z.remove_extracted_files.return_value = None
+
+        val = MagicMock()
+        val.files = fake_files
+        val.externalExtensions = []
+        val.is_valid.return_value = True
+
+        return z, val, read_side_effect
+
+    # ---- helper to run validate() with mocks ----
+
+    def _run(self, fake_files, read_fn):
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z, val, rf = self._patch_env(fake_files, read_fn)
+            PZip.return_value = z
+            PVal.return_value = val
+            PRead.side_effect = rf
+            return OSWValidation(zipfile_path="dummy.zip").validate()
+
+    # ---- tests ----
+
+    def test_valid_edge_mapping_passes(self):
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        edges = self._edges_gdf([("e1", "n1", "n2", [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    def test_u_id_coord_mismatch_fails(self):
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        # Edge starts at (9,9) but _u_id=n1 is at (0,0)
+        edges = self._edges_gdf([("e1", "n1", "n2", [(9.0, 9.0), (1.0, 1.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("_u_id mismatch" in e for e in (res.errors or [])))
+
+    def test_v_id_coord_mismatch_fails(self):
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        # Edge ends at (8,8) but _v_id=n2 is at (1,1)
+        edges = self._edges_gdf([("e1", "n1", "n2", [(0.0, 0.0), (8.0, 8.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("_v_id mismatch" in e for e in (res.errors or [])))
+
+    def test_mismatch_error_includes_feature_index_and_id(self):
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        edges = self._edges_gdf([("edge-xyz", "n1", "n2", [(9.0, 9.0), (1.0, 1.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        issue = next((i for i in (res.issues or []) if "_u_id mismatch" in i.get("error_message", "")), None)
+        self.assertIsNotNone(issue)
+        self.assertEqual(issue["filename"], "edges")
+        self.assertIsNotNone(issue["feature_index"])
+        self.assertIn("edge-xyz", issue["error_message"])
+
+    def test_u_id_not_in_node_map_does_not_double_report(self):
+        """Unknown _u_id is caught by the existence check; no coord error for it."""
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0)])
+        edges = self._edges_gdf([("e1", "ghost", "n1", [(5.0, 5.0), (0.0, 0.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        # existence check fires, but no coordinate mismatch error
+        coord_errs = [e for e in (res.errors or []) if "mismatch" in e]
+        self.assertEqual(coord_errs, [])
+
+    def test_no_nodes_file_skips_mapping(self):
+        """When there are no nodes, coordinate checks are silently skipped."""
+        edges = self._edges_gdf([("e1", "n1", "n2", [(0.0, 0.0), (1.0, 1.0)])])
+
+        def rf(path):
+            return edges if "edges" in os.path.basename(path) else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/edges.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    def test_w_id_coord_mismatch_fails(self):
+        ring = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+        nodes = self._nodes_gdf([
+            ("w1", 0.0, 0.0), ("w2", 1.0, 0.0), ("w3", 1.0, 1.0),
+            ("w4", 9.0, 9.0),  # not in ring
+        ])
+        zones = self._zones_gdf([("z1", ["w1", "w2", "w3", "w4"], ring)])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else zones if "zones" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/zones.geojson"], rf)
+        self.assertFalse(res.is_valid)
+        self.assertTrue(any("_w_id coordinate mismatch" in e for e in (res.errors or [])))
+        self.assertTrue(any("w4" in e for e in (res.errors or [])))
+
+    def test_valid_zone_mapping_passes(self):
+        ring = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+        nodes = self._nodes_gdf([
+            ("w1", 0.0, 0.0), ("w2", 1.0, 0.0), ("w3", 1.0, 1.0), ("w4", 0.0, 1.0),
+        ])
+        zones = self._zones_gdf([("z1", ["w1", "w2", "w3", "w4"], ring)])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else zones if "zones" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/zones.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    def test_max_errors_caps_geometry_mapping_errors(self):
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        # 10 edges all with wrong start coordinate
+        edges = gpd.GeoDataFrame(
+            {
+                "_id": [f"e{i}" for i in range(10)],
+                "_u_id": ["n1"] * 10,
+                "_v_id": ["n2"] * 10,
+                "geometry": [LineString([(9.0, 9.0), (1.0, 1.0)])] * 10,
+            },
+            geometry="geometry", crs="EPSG:4326",
+        )
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+            val = MagicMock()
+            val.files = ["/tmp/nodes.geojson", "/tmp/edges.geojson"]
+            val.externalExtensions = []
+            val.is_valid.return_value = True
+            PVal.return_value = val
+            PRead.side_effect = rf
+            res = OSWValidation(zipfile_path="dummy.zip").validate(max_errors=3)
+
+        self.assertFalse(res.is_valid)
+        self.assertLessEqual(len(res.errors), 3)
+
+    def test_coord_within_tolerance_no_error(self):
+        """Coordinates within 1e-7 degrees are accepted as matching."""
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+        # Start is 5e-8 off (within tolerance)
+        edges = self._edges_gdf([("e1", "n1", "n2", [(5e-8, 0.0), (1.0, 1.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
