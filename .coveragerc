@@ -1,0 +1,4 @@
+[run]
+omit =
+    src/python_osw_validation/version.py
+    src/python_osw_validation/example.py

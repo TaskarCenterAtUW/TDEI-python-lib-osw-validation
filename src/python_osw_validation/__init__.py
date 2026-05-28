@@ -14,6 +14,7 @@ from .helpers import (
     _err_kind,
     _feature_index_from_error,
     _pretty_message,
+    _read_geojson_without_ext,
 )
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
@@ -419,7 +420,7 @@ class OSWValidation:
                 osw_file = next((osw_key for osw_key in OSW_DATASET_FILES.keys()
                                  if osw_key in os.path.basename(file_path)), '')
                 try:
-                    gdf = gpd.read_file(file_path)
+                    gdf = _read_geojson_without_ext(file_path)
                 except Exception as e:
                     self.log_errors(
                         message=f"Failed to read '{os.path.basename(file_path)}' as GeoJSON: {e}",
@@ -557,7 +558,7 @@ class OSWValidation:
                 file_path = os.path.join(file)
                 file_name = os.path.basename(file)
                 try:
-                    extensionFile = gpd.read_file(file_path)
+                    extensionFile = _read_geojson_without_ext(file_path)
                 except Exception as e:
                     self.log_errors(
                         message=f"Failed to read extension '{file_name}' as GeoJSON: {e}",

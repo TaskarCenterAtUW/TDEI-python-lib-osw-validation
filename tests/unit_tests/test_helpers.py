@@ -1,4 +1,8 @@
+import json
+import os
+import tempfile
 import unittest
+
 import src.python_osw_validation.helpers as helpers
 
 
@@ -177,6 +181,98 @@ class TestRankFor(unittest.TestCase):
         e_short = FakeErr(kind=KType(), message="short")
         e_long = FakeErr(kind=KType(), message="a much longer message to increase length")
         self.assertLess(helpers._rank_for(e_short), helpers._rank_for(e_long))
+
+
+class TestReadGeojsonWithoutExt(unittest.TestCase):
+    def _write_geojson(self, payload):
+        fd, path = tempfile.mkstemp(suffix=".geojson")
+        os.close(fd)
+        with open(path, "w") as f:
+            json.dump(payload, f)
+        self.addCleanup(os.remove, path)
+        return path
+
+    def test_drops_ext_properties_with_mixed_types(self):
+        """The bug we're fixing: ext:* values mixing numeric and string across
+        features causes pyogrio dtype inference to fail. After stripping, the
+        load should succeed and the ext:* column should not be present."""
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "a", "ext:TextRotation": 310.0, "name": "n1"},
+                    "geometry": {"type": "Point", "coordinates": [0, 0]},
+                },
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "b", "ext:TextRotation": "not_appl", "name": "n2"},
+                    "geometry": {"type": "Point", "coordinates": [1, 1]},
+                },
+            ],
+        }
+        path = self._write_geojson(payload)
+        gdf = helpers._read_geojson_without_ext(path)
+
+        self.assertEqual(len(gdf), 2)
+        self.assertNotIn("ext:TextRotation", gdf.columns)
+        # Non-ext columns must be preserved for downstream integrity checks.
+        self.assertIn("_id", gdf.columns)
+        self.assertIn("name", gdf.columns)
+        self.assertEqual(sorted(gdf["_id"].tolist()), ["a", "b"])
+
+    def test_preserves_non_ext_properties(self):
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "x", "highway": "footway", "ext:foo": 1},
+                    "geometry": {"type": "Point", "coordinates": [0, 0]},
+                }
+            ],
+        }
+        gdf = helpers._read_geojson_without_ext(self._write_geojson(payload))
+        self.assertIn("highway", gdf.columns)
+        self.assertNotIn("ext:foo", gdf.columns)
+        self.assertEqual(gdf["highway"].iloc[0], "footway")
+
+    def test_no_ext_properties_is_noop(self):
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "x", "highway": "footway"},
+                    "geometry": {"type": "Point", "coordinates": [2, 3]},
+                }
+            ],
+        }
+        gdf = helpers._read_geojson_without_ext(self._write_geojson(payload))
+        self.assertEqual(len(gdf), 1)
+        self.assertEqual(gdf["highway"].iloc[0], "footway")
+        self.assertEqual(gdf.geometry.iloc[0].x, 2)
+        self.assertEqual(gdf.geometry.iloc[0].y, 3)
+
+    def test_empty_feature_collection(self):
+        payload = {"type": "FeatureCollection", "features": []}
+        gdf = helpers._read_geojson_without_ext(self._write_geojson(payload))
+        self.assertEqual(len(gdf), 0)
+
+    def test_crs_is_propagated_when_present(self):
+        payload = {
+            "type": "FeatureCollection",
+            "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "x"},
+                    "geometry": {"type": "Point", "coordinates": [0, 0]},
+                }
+            ],
+        }
+        gdf = helpers._read_geojson_without_ext(self._write_geojson(payload))
+        self.assertIsNotNone(gdf.crs)
 
 
 if __name__ == "__main__":
