@@ -1,8 +1,5 @@
 # TDEI python lib OSW validation package
 
-[![Tests](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](#)
-
 [![PyPI version](https://img.shields.io/pypi/v/python-osw-validation.svg)](https://pypi.org/project/python-osw-validation/)
 [![Tests](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](#)
