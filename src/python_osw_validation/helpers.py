@@ -1,5 +1,29 @@
 from typing import Optional
+import json
 import re
+
+import geopandas as gpd
+
+
+def _read_geojson_without_ext(file_path: str) -> gpd.GeoDataFrame:
+    """Load a GeoJSON file into a GeoDataFrame with ext:* properties removed.
+
+    Why: pyogrio/GDAL infers a single dtype per property column when reading
+    GeoJSON. Extension tags (ext:*) are free-form by spec and may legitimately
+    mix numbers and strings across features, which breaks that inference and
+    surfaces as a confusing JSON parse error. Schema validation has already
+    accepted these properties; the GeoDataFrame is only used for geometry and
+    _id-based integrity checks, so dropping ext:* here is safe.
+    """
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    for feature in data.get('features', []):
+        props = feature.get('properties')
+        if isinstance(props, dict):
+            for key in [k for k in props if isinstance(k, str) and k.startswith('ext:')]:
+                del props[key]
+    crs = (data.get('crs') or {}).get('properties', {}).get('name')
+    return gpd.GeoDataFrame.from_features(data.get('features', []), crs=crs)
 
 _ADDITIONAL_PROPERTIES_RE = re.compile(
     r"Additional properties are not allowed \('(?P<tag>[^']+)' was unexpected\)"
