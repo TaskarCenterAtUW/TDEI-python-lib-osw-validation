@@ -16,7 +16,7 @@ _PATCH_PREFIX = osw_mod.__name__
 _PATCH_UNIQUE = f"{_PATCH_PREFIX}.OSWValidation.are_ids_unique"
 _PATCH_ZIP = f"{_PATCH_PREFIX}.ZipFileHandler"
 _PATCH_EV = f"{_PATCH_PREFIX}.ExtractedDataValidator"
-_PATCH_READ_FILE = f"{_PATCH_PREFIX}.gpd.read_file"
+_PATCH_READ_FILE = f"{_PATCH_PREFIX}._read_geojson_without_ext"
 _PATCH_VALIDATE = f"{_PATCH_PREFIX}.OSWValidation.validate_osw_errors"
 _PATCH_DATASET_FILES = f"{_PATCH_PREFIX}.OSW_DATASET_FILES"
 

@@ -1,5 +1,10 @@
 # Change log
 
+### 0.4.1 - 2026-05-28
+- Fixed misleading `Expecting value: line 1 column 1 (char 0)` failure when loading GeoJSON files containing `ext:*` extension properties with mixed value types across features (e.g. `ext:TextRotation` numeric in some features and string in others). Extension properties are now stripped before the internal GeoPandas load used for geometry and `_id` integrity checks; schema-level validation of `ext:*` properties is unchanged.
+- Added regression coverage for the mixed-type `ext:*` load path in `tests/unit_tests/test_helpers.py` and added `tests/assets/SDOT_lanewidth_osw.points.geojson.zip` as the reproducer dataset.
+- Excluded `version.py` from the coverage report via a new `.coveragerc`.
+
 ### 0.4.0 - 2026-04-30
 - Added geometry mapping consistency validation: `_u_id` and `_v_id` references in edges are now verified against the actual start/end coordinates of the referenced node geometries.
 - Added `_w_id` coordinate mapping validation for zones: each referenced node coordinate must be a vertex of the zone's polygon exterior ring, in order.
