@@ -281,18 +281,18 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIsInstance(result.issues, list)
         self.assertGreater(len(result.issues), 0)
         flattened = " | ".join(issue["error_message"][0] for issue in result.issues)
-        self.assertIn("Invalid value at 'climb': \"null\".", flattened)
+        self.assertIn("Invalid value at 'climb': 'null'.", flattened)
 
-    def test_issues_respect_max_errors_override(self):
+    def test_task_3469_string_nulls_go_through_schema_validation(self):
         validation = OSWValidation(zipfile_path=self.task_3469_file)
         default_result = validation.validate()
         self.assertFalse(default_result.is_valid)
-        self.assertEqual(len(default_result.issues), 20)
+        self.assertEqual(len(default_result.issues), 3)
 
         validation = OSWValidation(zipfile_path=self.task_3469_file)
         override_result = validation.validate(max_errors=500)
         self.assertFalse(override_result.is_valid)
-        self.assertGreater(len(override_result.issues), 20)
+        self.assertEqual(len(override_result.issues), 3)
 
     def test_issue_3297_issue_payload(self):
         validation = OSWValidation(zipfile_path=self.issue_3297_file)

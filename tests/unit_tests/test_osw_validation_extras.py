@@ -102,6 +102,13 @@ class TestOSWValidationExtras(unittest.TestCase):
                     "properties": {
                         "step_count": None,
                         "width": math.nan,
+                        "string_null": "null",
+                        "string_nan": "nan",
+                        "string_nan_mixed_case": " NaN ",
+                        "ext:missing": None,
+                        "ext:metadata": {
+                            "score": math.nan,
+                        },
                     },
                     "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
                 }
@@ -117,11 +124,30 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertEqual(len(validator.issues), 2)
         self.assertEqual(
             validator.issues[0]["error_message"],
-            ["Invalid value at 'step_count': None. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+            ["Invalid value at 'ext:missing': None. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
         )
         self.assertEqual(
             validator.issues[1]["error_message"],
-            ["Invalid value at 'width': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+            ["Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+        )
+
+    def test_non_extension_nullish_values_are_not_upfront_nullish_values(self):
+        validator = OSWValidation(zipfile_path="dummy.zip")
+
+        self.assertEqual(
+            validator._collect_nullish_extension_property_paths({
+                "step_count": None,
+                "width": math.nan,
+                "string_null": "null",
+                "string_nan": "nan",
+                "string_nan_mixed_case": " NaN ",
+                "nested": [None, math.nan],
+                "ext:string_null": "null",
+                "ext:string_nan": "nan",
+                "ext:string_nan_mixed_case": " NaN ",
+                "ext:nested_strings": ["null", "nan"],
+            }),
+            [],
         )
 
     def test_missing_u_id_reports_error_without_keyerror(self):
