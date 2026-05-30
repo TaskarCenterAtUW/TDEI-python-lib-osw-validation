@@ -1,8 +1,8 @@
 # TDEI python lib OSW validation package
 
-[![PyPI version](https://img.shields.io/pypi/v/python-osw-validation.svg)](https://pypi.org/project/python-osw-validation/)
-[![Tests](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](#)
+[![python-osw-validation](https://img.shields.io/pypi/v/python-osw-validation?label=python-osw-validation&cacheSeconds=60&t=1)](https://pypi.org/project/python-osw-validation/)
+[![Unit Tests](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml)
+![Coverage](https://raw.githubusercontent.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/badges/coverage.svg)
 
 This package validates OSW GeoJSON datasets packaged as a ZIP file.
 
@@ -17,7 +17,7 @@ This package validates OSW GeoJSON datasets packaged as a ZIP file.
 - Extracts the provided ZIP file
 - Finds supported OSW dataset files inside the extracted directory
 - Validates each file (`edges`, `lines`, `nodes`, `points`, `polygons`, and `zones`) against the matching schema
-- Performs an upfront data-quality check for null-like placeholders in feature properties (for example `null`, `NaN`, `"null"`, `"nan"`)
+- Performs an upfront data-quality check for actual null and numeric NaN values in `ext:*` extension properties (for example JSON `null` or numeric `NaN`; string values like `"null"` and `"nan"` are not rejected by this precheck)
 - Runs cross-file integrity checks such as duplicate `_id` detection and edge or zone references back to nodes
 - Returns a `ValidationResult` object with `is_valid`, `errors`, and `issues`
 
@@ -50,8 +50,8 @@ print(result.issues)  # capped by the same max_errors limit
 
 - `errors`: high-level validation messages, capped by `max_errors` (default `20`).
 - `issues`: detailed per-feature validation issues, also capped by `max_errors`.
-- If null-like placeholders are found in feature `properties`, validation fails early before schema checks with actionable messages such as:
-  - `Invalid value at 'climb': 'null'. Null/NaN placeholders are not allowed; provide a valid value or remove this property.`
+- If actual null or numeric NaN values are found in `ext:*` extension properties, validation fails early before schema checks with actionable messages such as:
+  - `Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property.`
 - For enum validation, long allowed-value lists are summarized as:
   - first 5 values joined by `|`
   - followed by `| and N more` when applicable.

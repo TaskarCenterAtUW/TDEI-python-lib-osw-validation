@@ -2,6 +2,7 @@ import os
 import gc
 import json
 import math
+import numbers
 from typing import Dict, Any, Optional, List, Tuple
 import geopandas as gpd
 import jsonschema_rs
@@ -283,9 +284,7 @@ class OSWValidation:
     def _is_nullish_value(self, value: Any) -> bool:
         if value is None:
             return True
-        if isinstance(value, str) and value.strip().lower() in {"null", "nan"}:
-            return True
-        return isinstance(value, float) and math.isnan(value)
+        return isinstance(value, numbers.Real) and math.isnan(value)
 
     def _collect_nullish_property_paths(self, obj: Any, prefix: str = "") -> List[Tuple[str, Any]]:
         paths: List[Tuple[str, Any]] = []
@@ -301,6 +300,13 @@ class OSWValidation:
             return paths
         if self._is_nullish_value(obj):
             paths.append((prefix or "value", obj))
+        return paths
+
+    def _collect_nullish_extension_property_paths(self, props: Dict[str, Any]) -> List[Tuple[str, Any]]:
+        paths: List[Tuple[str, Any]] = []
+        for key, value in props.items():
+            if isinstance(key, str) and key.startswith("ext:"):
+                paths.extend(self._collect_nullish_property_paths(value, key))
         return paths
 
     def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> set:
@@ -676,8 +682,8 @@ class OSWValidation:
 
         filename = os.path.basename(file_path)
 
-        # Upfront guard: reject null/NaN values in feature properties.
-        # This runs before schema validation to surface data quality issues first.
+        # Upfront guard: reject null/NaN values in free-form extension properties.
+        # Schema-owned properties are left to schema validation.
         features = geojson_data.get("features", []) if isinstance(geojson_data, dict) else []
         found_nullish = False
         for idx, feature in enumerate(features):
@@ -686,7 +692,7 @@ class OSWValidation:
             props = feature.get("properties")
             if not isinstance(props, dict):
                 continue
-            bad_paths = self._collect_nullish_property_paths(props)
+            bad_paths = self._collect_nullish_extension_property_paths(props)
             for path, bad_value in bad_paths:
                 if len(self.errors) >= max_errors:
                     return False
