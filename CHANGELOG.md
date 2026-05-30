@@ -1,5 +1,8 @@
 # Change log
 
+### 0.4.2 - 2026-05-30
+- Changed the upfront null/NaN precheck to reject only actual JSON null values and numeric NaN values in `ext:*` extension properties; schema-owned properties are left to schema validation, and string values such as `"null"` and `"nan"` are no longer rejected by this precheck.
+
 ### 0.4.1 - 2026-05-28
 - Fixed misleading `Expecting value: line 1 column 1 (char 0)` failure when loading GeoJSON files containing `ext:*` extension properties with mixed value types across features (e.g. `ext:TextRotation` numeric in some features and string in others). Extension properties are now stripped before the internal GeoPandas load used for geometry and `_id` integrity checks; schema-level validation of `ext:*` properties is unchanged.
 - Added regression coverage for the mixed-type `ext:*` load path in `tests/unit_tests/test_helpers.py` and added `tests/assets/SDOT_lanewidth_osw.points.geojson.zip` as the reproducer dataset.
