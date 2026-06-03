@@ -1,5 +1,8 @@
+import json
 import os
+import tempfile
 import unittest
+import zipfile
 from src.python_osw_validation import OSWValidation
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +44,7 @@ class TestOSWValidation(unittest.TestCase):
         self.task_3469_file = os.path.join(ASSETS_PATH, 'task_3469.zip')
         self.issue_3297_file = os.path.join(ASSETS_PATH, 'issue_3297.zip')
         self.serialization_file = os.path.join(ASSETS_PATH, 'test_serialization_error.zip')
+        self.max_length_error_file = os.path.join(ASSETS_PATH, 'max-length-error.zip')
         self.schema_file_path = SCHEMA_FILE_PATH
         self.schema_paths = SCHEMA_PATHS
         self.invalid_schema_file_path = INVALID_SCHEMA_FILE_PATH
@@ -49,6 +53,37 @@ class TestOSWValidation(unittest.TestCase):
         self.edge_u_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_u_id_coord_mismatch.zip')
         self.edge_v_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_v_id_coord_mismatch.zip')
         self.zone_w_id_coord_mismatch = os.path.join(ASSETS_PATH, 'zone_w_id_coord_mismatch.zip')
+
+    def _validate_edge_length(self, length):
+        data = {
+            "$schema": "https://sidewalks.washington.edu/opensidewalks/0.3/schema.json",
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[0, 0], [1, 1]],
+                    },
+                    "properties": {
+                        "_id": "edge-1",
+                        "_u_id": "node-a",
+                        "_v_id": "node-b",
+                        "footway": "sidewalk",
+                        "highway": "footway",
+                        "length": length,
+                    },
+                }
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zipfile_path = os.path.join(tmpdir, "edge-length.zip")
+            with zipfile.ZipFile(zipfile_path, "w", zipfile.ZIP_DEFLATED) as dataset_zip:
+                dataset_zip.writestr("opensidewalks.edges.geojson", json.dumps(data))
+
+            validation = OSWValidation(zipfile_path=zipfile_path)
+            return validation.validate()
 
     def test_valid_zipfile(self):
         validation = OSWValidation(zipfile_path=self.valid_zipfile)
@@ -61,6 +96,22 @@ class TestOSWValidation(unittest.TestCase):
         result = validation.validate()
         self.assertTrue(result.is_valid)
         self.assertIsNone(result.errors)
+
+    def test_edge_length_over_5000_meters_is_valid(self):
+        validation = OSWValidation(zipfile_path=self.max_length_error_file)
+        result = validation.validate()
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_edge_length_zero_is_valid(self):
+        result = self._validate_edge_length(0)
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+
+    def test_edge_length_minus_one_is_invalid(self):
+        result = self._validate_edge_length(-1)
+        self.assertFalse(result.is_valid)
+        self.assertIsNotNone(result.errors)
 
     def test_valid_zipfile_with_invalid_schema(self):
         validation = OSWValidation(zipfile_path=self.valid_zipfile, schema_file_path=self.invalid_schema_file_path)
