@@ -170,7 +170,6 @@
               },
               "length": {
                 "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
-                "maximum": 5000,
                 "minimum": 0,
                 "type": "number"
               },
@@ -224,7 +223,6 @@
                   },
                   "length": {
                     "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
-                    "maximum": 5000,
                     "minimum": 0,
                     "type": "number"
                   }
@@ -253,7 +251,6 @@
                   },
                   "length": {
                     "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
-                    "maximum": 5000,
                     "minimum": 0,
                     "type": "number"
                   }
@@ -296,7 +293,6 @@
                   },
                   "length": {
                     "description": "A field for the length of an entity in meters. This field is always inferred from the geometry.",
-                    "maximum": 5000,
                     "minimum": 0,
                     "type": "number"
                   },
