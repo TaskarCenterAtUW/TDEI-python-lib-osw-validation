@@ -2,7 +2,7 @@
 
 [![python-osw-validation](https://img.shields.io/pypi/v/python-osw-validation?label=python-osw-validation&cacheSeconds=60&t=1)](https://pypi.org/project/python-osw-validation/)
 [![Unit Tests](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/workflows/unit_tests.yml)
-![Coverage](https://raw.githubusercontent.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/actions/badges/coverage.svg)
+![Coverage](https://raw.githubusercontent.com/TaskarCenterAtUW/TDEI-python-lib-osw-validation/badges/coverage.svg)
 
 This package validates OSW GeoJSON datasets packaged as a ZIP file.
 
