@@ -1,5 +1,9 @@
 # Change log
 
+### 0.4.3 - 2026-06-03
+- Removed the `maximum: 5000` constraint from `length` in the OSW 0.3 edges and lines schemas so longer paths, including `length: 6629.35`, validate successfully.
+- Added regression coverage for long `length` values using `tests/assets/max-length-error.zip`, plus boundary tests for `length: 0` and `length: -1`.
+
 ### 0.4.2 - 2026-05-30
 - Changed the upfront null/NaN precheck to reject only actual JSON null values and numeric NaN values in `ext:*` extension properties; schema-owned properties are left to schema validation, and string values such as `"null"` and `"nan"` are no longer rejected by this precheck.
 
