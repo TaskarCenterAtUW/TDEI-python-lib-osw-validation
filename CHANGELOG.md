@@ -1,5 +1,12 @@
 # Change log
 
+### 0.4.4 - 2026-07-01
+- Fixed dataset filename classification so names containing dataset tokens in the prefix, such as `River._edges_.nodes.geojson`, are classified by their final dataset suffix instead of by loose substring matching.
+- Supported filename detection now consistently accepts only these four forms for each dataset type: `<dataset>.geojson`, `*.<dataset>.geojson`, `<dataset>.OSW.geojson`, and `*.<dataset>.OSW.geojson`.
+- Rejected ambiguous glued or marker-style names such as `roadnodes.geojson`, `roadedges.geojson`, and `River._edges_.geojson` with clearer unsupported-file guidance.
+- Added regression coverage using `tests/assets/3750.zip` plus unit tests for accepted and rejected filename formats across dataset keys.
+- Updated the README supported-filenames section to document the accepted formats and invalid examples.
+
 ### 0.4.3 - 2026-06-03
 - Removed the `maximum: 5000` constraint from `length` in the OSW 0.3 edges and lines schemas so longer paths, including `length: 6629.35`, validate successfully.
 - Added regression coverage for long `length` values using `tests/assets/max-length-error.zip`, plus boundary tests for `length: 0` and `length: -1`.
