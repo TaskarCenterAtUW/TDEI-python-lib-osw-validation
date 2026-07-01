@@ -53,6 +53,7 @@ class TestOSWValidation(unittest.TestCase):
         self.edge_u_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_u_id_coord_mismatch.zip')
         self.edge_v_id_coord_mismatch = os.path.join(ASSETS_PATH, 'edge_v_id_coord_mismatch.zip')
         self.zone_w_id_coord_mismatch = os.path.join(ASSETS_PATH, 'zone_w_id_coord_mismatch.zip')
+        self.edges_token_in_prefix_file = os.path.join(ASSETS_PATH, '3750.zip')
 
     def _validate_edge_length(self, length):
         data = {
@@ -366,6 +367,14 @@ class TestOSWValidation(unittest.TestCase):
         """Dataset where edge endpoints exactly match their referenced node coordinates."""
         validation = OSWValidation(zipfile_path=self.geom_mapping_valid)
         result = validation.validate()
+        self.assertTrue(result.is_valid, f"Expected valid; errors={result.errors}")
+        self.assertIsNone(result.errors)
+
+    def test_edges_token_in_filename_prefix_does_not_misclassify_nodes(self):
+        """A filename prefix containing '_edges_' should not make nodes load as edges."""
+        validation = OSWValidation(zipfile_path=self.edges_token_in_prefix_file)
+        result = validation.validate()
+
         self.assertTrue(result.is_valid, f"Expected valid; errors={result.errors}")
         self.assertIsNone(result.errors)
 
