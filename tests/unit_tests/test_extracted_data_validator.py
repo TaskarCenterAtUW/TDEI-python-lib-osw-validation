@@ -3,7 +3,7 @@ import os
 import tempfile
 import shutil
 from unittest.mock import patch
-from src.python_osw_validation.extracted_data_validator import ExtractedDataValidator
+from src.python_osw_validation.extracted_data_validator import ExtractedDataValidator, dataset_key_for_filename
 from src.python_osw_validation.extracted_data_validator import ALLOWED_OSW_03_FILENAMES
 
 
@@ -75,6 +75,31 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertTrue(validator.is_valid())
         self.assertEqual(len(validator.files), 2)
 
+    def test_valid_bare_dataset_filenames(self):
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['nodes.geojson', 'edges.geojson'])
+        self.assertTrue(validator.is_valid())
+        self.assertEqual(len(validator.files), 2)
+
+    def test_valid_bare_legacy_osw_dataset_filenames(self):
+        validator = ExtractedDataValidator(self.test_dir)
+        self.create_files(['nodes.OSW.geojson', 'edges.OSW.geojson'])
+        self.assertTrue(validator.is_valid())
+        self.assertEqual(len(validator.files), 2)
+
+    def test_supported_legacy_filename_formats_for_all_dataset_keys(self):
+        for dataset_key in ('edges', 'nodes', 'points', 'lines', 'zones', 'polygons'):
+            self.assertEqual(dataset_key_for_filename(f'{dataset_key}.geojson'), dataset_key)
+            self.assertEqual(dataset_key_for_filename(f'city.{dataset_key}.geojson'), dataset_key)
+            self.assertEqual(dataset_key_for_filename(f'{dataset_key}.OSW.geojson'), dataset_key)
+            self.assertEqual(dataset_key_for_filename(f'city.{dataset_key}.OSW.geojson'), dataset_key)
+
+    def test_ambiguous_dataset_name_substrings_are_not_supported(self):
+        self.assertIsNone(dataset_key_for_filename('roadnodes.geojson'))
+        self.assertIsNone(dataset_key_for_filename('roadedges.geojson'))
+        self.assertIsNone(dataset_key_for_filename('city._nodes_.geojson'))
+        self.assertIsNone(dataset_key_for_filename('River._edges_.geojson'))
+
     def test_non_standard_filenames_raise_error(self):
         validator = ExtractedDataValidator(self.test_dir)
         self.create_files(['custom.nodes.geojson', 'opensidewalks.nodes.geojson'])
@@ -112,7 +137,10 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: something_else.geojson. '
-            'Allowed file names are *.{edges, nodes, points, lines, zones, polygons}.geojson'
+            'Allowed file names are {edges, nodes, points, lines, zones, polygons}.geojson, '
+            '*.{edges, nodes, points, lines, zones, polygons}.geojson, '
+            '{edges, nodes, points, lines, zones, polygons}.OSW.geojson, or '
+            '*.{edges, nodes, points, lines, zones, polygons}.OSW.geojson'
         )
 
     def test_glued_dataset_names_are_rejected(self):
@@ -122,7 +150,10 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: roadedges.geojson, roadnodes.geojson. '
-            'Allowed file names are *.{edges, nodes, points, lines, zones, polygons}.geojson'
+            'Allowed file names are {edges, nodes, points, lines, zones, polygons}.geojson, '
+            '*.{edges, nodes, points, lines, zones, polygons}.geojson, '
+            '{edges, nodes, points, lines, zones, polygons}.OSW.geojson, or '
+            '*.{edges, nodes, points, lines, zones, polygons}.OSW.geojson'
         )
 
 

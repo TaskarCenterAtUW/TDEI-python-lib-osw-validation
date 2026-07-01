@@ -50,16 +50,19 @@ _FILENAME_TO_KEY = {
 
 def _matches_dataset_filename(basename: str, dataset_key: str) -> bool:
     lower_name = basename.lower()
-    if not lower_name.endswith(".geojson"):
-        return False
-
-    stem = lower_name[:-len(".geojson")]
     return (
-        stem == dataset_key
-        or stem == f"{dataset_key}.osw"
-        or stem.endswith(f".{dataset_key}")
-        or stem.endswith(f".{dataset_key}.osw")
+        lower_name == f"{dataset_key}.geojson"
+        or lower_name == f"{dataset_key}.osw.geojson"
+        or lower_name.endswith(f".{dataset_key}.geojson")
+        or lower_name.endswith(f".{dataset_key}.osw.geojson")
     )
+
+
+def dataset_key_for_filename(basename: str):
+    for dataset_key in OSW_DATASET_FILES.keys():
+        if _matches_dataset_filename(basename, dataset_key):
+            return dataset_key
+    return None
 
 
 class ExtractedDataValidator:
@@ -118,7 +121,12 @@ class ExtractedDataValidator:
         )
         if unsupported_files:
             allowed_fmt = ", ".join(allowed_keys)
-            allowed_names = f"*.{{{allowed_fmt}}}.geojson"
+            allowed_names = (
+                f"{{{allowed_fmt}}}.geojson, "
+                f"*.{{{allowed_fmt}}}.geojson, "
+                f"{{{allowed_fmt}}}.OSW.geojson, or "
+                f"*.{{{allowed_fmt}}}.OSW.geojson"
+            )
             self.error = (f"Unsupported .geojson files present: {', '.join(unsupported_files)}. "
                           f"Allowed file names are {allowed_names}")
             return False

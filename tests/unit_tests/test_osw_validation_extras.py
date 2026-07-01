@@ -915,7 +915,10 @@ class TestOSWValidationInternals(unittest.TestCase):
 
     def test_pick_schema_filename_fallback(self):
         v = OSWValidation(zipfile_path="dummy.zip")
+        self.assertEqual(v.pick_schema_for_file("/tmp/nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/nodes.OSW.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
+        self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.OSW.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.points.geojson", {"features": []}), v.dataset_schema_paths["points"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), v.dataset_schema_paths["edges"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.lines.geojson", {"features": []}), v.dataset_schema_paths["lines"])
@@ -946,6 +949,10 @@ class TestOSWValidationInternals(unittest.TestCase):
         )
         self.assertEqual(
             v.pick_schema_for_file("/tmp/roadEdges.geojson", {"features": []}),
+            v.line_schema_path,
+        )
+        self.assertEqual(
+            v.pick_schema_for_file("/tmp/River._edges_.geojson", {"features": []}),
             v.line_schema_path,
         )
 

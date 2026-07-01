@@ -8,7 +8,7 @@ import geopandas as gpd
 import jsonschema_rs
 
 from .zipfile_handler import ZipFileHandler
-from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES
+from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES, dataset_key_for_filename
 from .version import __version__
 from .helpers import (
     _add_additional_properties_hint,
@@ -269,16 +269,25 @@ class OSWValidation:
             return None
 
         basename = os.path.basename(text).lower()
-        stem, _ = os.path.splitext(basename)
         for key in self.dataset_schema_paths:
             if (
-                    stem == key
-                    or stem == f"{key}.osw"
-                    or stem.endswith(f".{key}")
-                    or stem.endswith(f".{key}.osw")
+                    basename == f"{key}.geojson"
+                    or basename == f"{key}.osw.geojson"
+                    or basename.endswith(f".{key}.geojson")
+                    or basename.endswith(f".{key}.osw.geojson")
             ):
                 return key
 
+        return None
+
+    def _schema_key_from_schema_url(self, schema_url: Any) -> Optional[str]:
+        if not isinstance(schema_url, str):
+            return None
+
+        lower_url = schema_url.lower()
+        for key in self.dataset_schema_paths:
+            if lower_url.endswith(f"/{key}.schema.json"):
+                return key
         return None
 
     def _is_nullish_value(self, value: Any) -> bool:
@@ -371,6 +380,10 @@ class OSWValidation:
         if schema_key and schema_key in self.dataset_schema_paths:
             return self.dataset_schema_paths[schema_key]
 
+        schema_key = self._schema_key_from_schema_url(geojson_data.get('$schema'))
+        if schema_key and schema_key in self.dataset_schema_paths:
+            return self.dataset_schema_paths[schema_key]
+
         return self.line_schema_path
 
     # ----------------------------
@@ -423,8 +436,7 @@ class OSWValidation:
             # Load GeoDataFrames for integrity checks
             for file in validator.files:
                 file_path = os.path.join(file)
-                osw_file = next((osw_key for osw_key in OSW_DATASET_FILES.keys()
-                                 if osw_key in os.path.basename(file_path)), '')
+                osw_file = dataset_key_for_filename(os.path.basename(file_path))
                 try:
                     gdf = _read_geojson_without_ext(file_path)
                 except Exception as e:
