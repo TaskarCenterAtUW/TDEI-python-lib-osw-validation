@@ -331,27 +331,50 @@ class OSWValidation:
                 feature_index=feature_index,
             )
 
-    def _validate_zero_length_edges(
+    def _geometry_coordinate_pairs(self, geometry) -> List[tuple]:
+        """Return two-dimensional coordinate pairs from line and polygon geometries."""
+        if geometry is None or geometry.is_empty:
+            return []
+        if geometry.geom_type in {'LineString', 'LinearRing'}:
+            return [(coordinate[0], coordinate[1]) for coordinate in geometry.coords]
+        if geometry.geom_type == 'Polygon':
+            coordinates = self._geometry_coordinate_pairs(geometry.exterior)
+            for ring in geometry.interiors:
+                coordinates.extend(self._geometry_coordinate_pairs(ring))
+            return coordinates
+        if geometry.geom_type in {'MultiLineString', 'MultiPolygon', 'GeometryCollection'}:
+            return [
+                coordinate
+                for part in geometry.geoms
+                for coordinate in self._geometry_coordinate_pairs(part)
+            ]
+        return []
+
+    def _validate_collapsed_geometries(
         self,
-        edges_df: Optional[gpd.GeoDataFrame],
+        gdf: Optional[gpd.GeoDataFrame],
+        dataset_name: str,
         max_errors: int,
     ) -> set:
-        """Report zero-length LineStrings and return their feature indexes."""
-        zero_length_indexes = set()
-        if edges_df is None:
-            return zero_length_indexes
+        """Report line or polygon features whose coordinates all share one location."""
+        collapsed_indexes = set()
+        if gdf is None:
+            return collapsed_indexes
 
-        for feature_index, row in edges_df.iterrows():
+        for feature_index, row in gdf.iterrows():
             geometry = row.geometry
-            if (
-                geometry is None
-                or geometry.geom_type != 'LineString'
-                or geometry.is_empty
-                or geometry.length != 0
-            ):
+            coordinates = self._geometry_coordinate_pairs(geometry)
+            if len(coordinates) < 2 or len(set(coordinates)) != 1:
                 continue
 
-            zero_length_indexes.add(feature_index)
+            if geometry.geom_type in {'LineString', 'MultiLineString'}:
+                geometry_problem = 'zero-length'
+            elif geometry.geom_type in {'Polygon', 'MultiPolygon'}:
+                geometry_problem = 'zero-area'
+            else:
+                continue
+
+            collapsed_indexes.add(feature_index)
             if len(self.errors) >= max_errors:
                 continue
 
@@ -360,13 +383,14 @@ class OSWValidation:
                 feature_id = feature_index
             self.log_errors(
                 message=(
-                    f"Edge '{feature_id}' has zero-length geometry because all coordinates are identical."
+                    f"Feature '{feature_id}' in '{dataset_name}' has {geometry_problem} geometry "
+                    "because all coordinates are identical."
                 ),
-                filename='edges',
+                filename=dataset_name,
                 feature_index=feature_index,
             )
 
-        return zero_length_indexes
+        return collapsed_indexes
 
     def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
         """Return dataset key from exact filename suffixes only."""
@@ -659,9 +683,7 @@ class OSWValidation:
             for osw_file, gdf in OSW_DATASET.items():
                 if gdf is None:
                     continue
-                zero_length_indexes = set()
-                if osw_file == 'edges':
-                    zero_length_indexes = self._validate_zero_length_edges(gdf, max_errors)
+                collapsed_indexes = self._validate_collapsed_geometries(gdf, osw_file, max_errors)
                 if osw_file in VERTEX_LIMIT_DATASETS and len(self.errors) < max_errors:
                     self._validate_geometry_vertex_limit(gdf, osw_file, max_errors)
                 expected_geom = OSW_DATASET_FILES.get(osw_file, {}).get('geometry')
@@ -672,8 +694,8 @@ class OSWValidation:
                 else:
                     invalid_geojson = gdf[gdf.is_valid == False]
 
-                if zero_length_indexes:
-                    invalid_geojson = invalid_geojson.drop(index=zero_length_indexes, errors='ignore')
+                if collapsed_indexes:
+                    invalid_geojson = invalid_geojson.drop(index=collapsed_indexes, errors='ignore')
 
                 if len(invalid_geojson) > 0:
                     # Extract IDs if present, else fallback to index
@@ -706,7 +728,15 @@ class OSWValidation:
                 if len(self.errors) < max_errors:
                     self._validate_geometry_vertex_limit(extensionFile, file_name, max_errors)
 
+                collapsed_indexes = self._validate_collapsed_geometries(
+                    extensionFile,
+                    file_name,
+                    max_errors,
+                )
+
                 invalid_geojson = extensionFile[extensionFile.is_valid == False]
+                if collapsed_indexes:
+                    invalid_geojson = invalid_geojson.drop(index=collapsed_indexes, errors='ignore')
                 if len(invalid_geojson) > 0:
                     try:
                         invalid_ids = list(set(invalid_geojson.get('_id', invalid_geojson.index)))
