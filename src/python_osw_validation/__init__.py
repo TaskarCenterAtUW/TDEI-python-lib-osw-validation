@@ -1,22 +1,37 @@
 import os
 import gc
 import json
-import math
-import numbers
 from typing import Dict, Any, Optional, List, Tuple
 import geopandas as gpd
-import jsonschema_rs
+import jsonschema_rs  # Re-exported for backward-compatible test and patch seams.
 
 from .zipfile_handler import ZipFileHandler
+from .config import DEFAULT_COORDINATE_PRECISION, ValidationConfig
 from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES, dataset_key_for_filename
 from .version import __version__
 from .helpers import (
-    _add_additional_properties_hint,
-    _err_kind,
-    _feature_index_from_error,
-    _pretty_message,
     _read_geojson_without_ext,
     _geojson_file_has_excess_coordinate_precision,
+)
+from .validators.geometry import (
+    MAX_GEOMETRY_VERTICES,
+    VERTEX_LIMIT_DATASETS,
+    collapsed_geometry_findings,
+    generic_invalid_geometry_finding,
+    geometry_vertex_count,
+    vertex_limit_findings,
+)
+from .validators.identifiers import column_values, identifier_integrity_findings
+from .validators.mapping import build_node_coord_map, edge_mapping_findings, zone_mapping_findings
+from .validators.models import ValidationFinding
+from .validators.precision import has_excess_coordinate_precision
+from .validators.schema import (
+    collect_nullish_extension_property_paths,
+    disallowed_legacy_02_features,
+    prevalidate_geojson,
+    schema_key_from_text,
+    schema_key_from_url,
+    validate_against_schema,
 )
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
@@ -29,18 +44,23 @@ DEFAULT_DATASET_SCHEMAS = {
     "zones": os.path.join(SCHEMA_PATH, 'opensidewalks.zones.schema-0.3.json'),
 }
 
-COORDINATE_PRECISION_WARNING = "Input dataset contains coordinates with more than 7 decimal places."
-MAX_GEOMETRY_VERTICES = 2000
-VERTEX_LIMIT_DATASETS = frozenset({"edges", "lines", "polygons", "zones"})
+COORDINATE_PRECISION_WARNING = (
+    "Input dataset contains coordinates with more than "
+    f"{DEFAULT_COORDINATE_PRECISION} decimal places."
+)
 
 
 class ValidationResult:
     """Container for validation outcome.
 
     * `errors`: high-level, human-readable strings (legacy behavior).
+    * `error_details`: structured high-level errors.
     * `issues`: per-feature schema problems (former `fixme`), each item:
         { 'filename': str, 'feature_index': Optional[int], 'error_message': List[str] }
+    * `issue_details`: issues with additive stable `code` and `severity` metadata.
     * `warnings`: non-blocking validation warning string.
+    * `warning_details`: structured warning metadata.
+    * `summary`: aggregate counts by severity, code, and file.
     """
 
     def __init__(self, is_valid: bool, errors: Optional[List[str]] = None,
@@ -50,8 +70,65 @@ class ValidationResult:
             self.errors = None
         else:
             self.errors = errors
-        self.issues = issues
+        self.error_details = [{
+            "code": "VALIDATION_ERROR",
+            "severity": "error",
+            "message": message,
+        } for message in (self.errors or [])]
+        self.issue_details = self._normalize_issues(issues)
+        self.issues = self._legacy_issues(issues)
         self.warnings = warnings
+        self.warning_details = ([{
+            "code": "COORDINATE_PRECISION",
+            "severity": "warning",
+            "message": warnings,
+        }] if warnings else [])
+        self.summary = self._build_summary()
+
+    @staticmethod
+    def _normalize_issues(issues: Optional[List[Dict[str, Any]]]):
+        if issues is None:
+            return None
+        normalized = []
+        for issue in issues:
+            item = dict(issue)
+            item.setdefault("code", "VALIDATION_ERROR")
+            item.setdefault("severity", "error")
+            normalized.append(item)
+        return normalized
+
+    @staticmethod
+    def _legacy_issues(issues: Optional[List[Dict[str, Any]]]):
+        if issues is None:
+            return None
+        return [
+            {key: value for key, value in issue.items() if key not in {"code", "severity"}}
+            for issue in issues
+        ]
+
+    def _build_summary(self) -> Dict[str, Any]:
+        issues = self.issue_details or []
+        by_code: Dict[str, int] = {}
+        by_file: Dict[str, int] = {}
+        for issue in issues:
+            code = issue["code"]
+            filename = issue.get("filename") or "unknown"
+            by_code[code] = by_code.get(code, 0) + 1
+            by_file[filename] = by_file.get(filename, 0) + 1
+        for warning in self.warning_details:
+            code = warning["code"]
+            by_code[code] = by_code.get(code, 0) + 1
+        return {
+            "error_count": len(self.errors or []),
+            "warning_count": len(self.warning_details),
+            "issue_count": len(issues),
+            "by_severity": {
+                "error": len(self.error_details),
+                "warning": len(self.warning_details),
+            },
+            "by_code": by_code,
+            "by_file": by_file,
+        }
 
 
 class OSWValidation:
@@ -70,6 +147,7 @@ class OSWValidation:
             point_schema_path: Optional[str] = None,
             line_schema_path: Optional[str] = None,
             polygon_schema_path: Optional[str] = None,
+            config: Optional[ValidationConfig] = None,
     ):
         self.zipfile_path = zipfile_path
         self.extracted_dir: Optional[str] = None
@@ -77,6 +155,9 @@ class OSWValidation:
         # per-feature schema issues (formerly `fixme`)
         self.issues: List[Dict[str, Any]] = []
         self.warnings = ""
+        if config is not None and not isinstance(config, ValidationConfig):
+            raise TypeError("config must be a ValidationConfig instance.")
+        self.config = config or ValidationConfig()
 
         # Legacy single schema (if set, used for all)
         self.schema_file_path = schema_file_path  # may be None
@@ -94,63 +175,66 @@ class OSWValidation:
     # ----------------------------
     # Utilities & helpers
     # ----------------------------
-    def log_errors(self, message: str, filename: Optional[str] = None, feature_index: Optional[int] = None):
+    def log_errors(
+        self,
+        message: str,
+        filename: Optional[str] = None,
+        feature_index: Optional[int] = None,
+        code: str = "VALIDATION_ERROR",
+    ):
         """Helper to log errors in a consistent format."""
         self.errors.append(message)
         self.issues.append({
             'filename': filename,
             'feature_index': feature_index,
             'error_message': message,
+            'code': code,
+            'severity': 'error',
         })
+
+    def _record_findings(
+        self,
+        findings: List[ValidationFinding],
+        max_errors: Optional[int] = None,
+    ) -> None:
+        for finding in findings:
+            if max_errors is not None and len(self.errors) >= max_errors:
+                break
+            self.log_errors(
+                finding.message,
+                finding.filename,
+                finding.feature_index,
+                finding.code,
+            )
 
     def _check_coordinate_precision(self, file_paths) -> None:
         """Set one aggregate warning without affecting validation state."""
-        for file_path in file_paths:
-            try:
-                if _geojson_file_has_excess_coordinate_precision(str(file_path)):
-                    self.warnings = COORDINATE_PRECISION_WARNING
-                    return
-            except (OSError, json.JSONDecodeError, TypeError, ValueError):
-                # Existing parsing and schema validation own all functional errors.
-                continue
+        if has_excess_coordinate_precision(
+            file_paths,
+            checker=lambda path: _geojson_file_has_excess_coordinate_precision(
+                path,
+                self.config.coordinate_precision,
+            ),
+        ):
+            self.warnings = (
+                "Input dataset contains coordinates with more than "
+                f"{self.config.coordinate_precision} decimal places."
+            )
 
     # add this small helper inside OSWValidation (near other helpers)
     def _get_colset(self, gdf: Optional[gpd.GeoDataFrame], col: str, filekey: str) -> set:
         """Return set of a column if present; else log and return empty set."""
-        if gdf is None:
-            return set()
-        if col not in gdf.columns:
-            self.log_errors(f"Missing required column '{col}' in {filekey}.", filekey, None)
-            return set()
-        try:
-            return set(gdf[col].dropna())
-        except Exception:
-            # If non-hashable entries sneak in, coerce to str to keep moving
-            try:
-                return set(map(str, gdf[col].dropna()))
-            except Exception:
-                self.log_errors(f"Could not create set for column '{col}' in {filekey}.", filekey, None)
-                return set()
+        values, findings = column_values(gdf, col, filekey)
+        self._record_findings(findings)
+        return values
 
     # ----------------------------
     # Geometry mapping helpers
     # ----------------------------
 
-    def _coords_match(self, c1: tuple, c2: tuple) -> bool:
-        return c1 == c2
-
     def _build_node_coord_map(self, nodes_df: gpd.GeoDataFrame) -> Dict[Any, tuple]:
         """Return {node_id: (lon, lat)} from a nodes GeoDataFrame."""
-        coord_map: Dict[Any, tuple] = {}
-        for _, row in nodes_df.iterrows():
-            try:
-                nid = row['_id']
-            except KeyError:
-                continue
-            geom = row.geometry
-            if nid is not None and geom is not None and geom.geom_type == 'Point':
-                coord_map[nid] = (geom.x, geom.y)
-        return coord_map
+        return build_node_coord_map(nodes_df)
 
     def _validate_edge_geometry_mapping(
         self,
@@ -159,71 +243,7 @@ class OSWValidation:
         max_errors: int,
     ) -> None:
         """Verify edge start/end coordinates match their _u_id/_v_id node geometries."""
-        if edges_df is None or not node_coord_map:
-            return
-
-        has_u_id = '_u_id' in edges_df.columns
-        has_v_id = '_v_id' in edges_df.columns
-        if not (has_u_id or has_v_id):
-            return
-
-        for feat_idx, row in edges_df.iterrows():
-            if len(self.errors) >= max_errors:
-                break
-
-            geom = row.geometry
-            if geom is None or geom.geom_type != 'LineString':
-                continue
-
-            coords = list(geom.coords)
-            if not coords:
-                continue
-
-            try:
-                edge_id = row['_id']
-            except KeyError:
-                edge_id = feat_idx
-
-            if has_u_id:
-                try:
-                    u_id = row['_u_id']
-                except KeyError:
-                    u_id = None
-                if u_id is not None and u_id in node_coord_map:
-                    node_coord = node_coord_map[u_id]
-                    edge_start = (coords[0][0], coords[0][1])
-                    if not self._coords_match(edge_start, node_coord):
-                        self.log_errors(
-                            message=(
-                                f"edges id '{edge_id}' : "
-                                f"start coordinate {edge_start} does not match "
-                                f"node id '{u_id}' coordinate {node_coord} (_u_id mismatch)."
-                            ),
-                            filename='edges',
-                            feature_index=feat_idx,
-                        )
-
-            if len(self.errors) >= max_errors:
-                break
-
-            if has_v_id:
-                try:
-                    v_id = row['_v_id']
-                except KeyError:
-                    v_id = None
-                if v_id is not None and v_id in node_coord_map:
-                    node_coord = node_coord_map[v_id]
-                    edge_end = (coords[-1][0], coords[-1][1])
-                    if not self._coords_match(edge_end, node_coord):
-                        self.log_errors(
-                            message=(
-                                f"edges id '{edge_id}' : "
-                                f"end coordinate {edge_end} does not match "
-                                f"node id '{v_id}' coordinate {node_coord} (_v_id mismatch)."
-                            ),
-                            filename='edges',
-                            feature_index=feat_idx,
-                        )
+        self._record_findings(edge_mapping_findings(edges_df, node_coord_map), max_errors)
 
     def _validate_zone_geometry_mapping(
         self,
@@ -232,74 +252,11 @@ class OSWValidation:
         max_errors: int,
     ) -> None:
         """Verify each _w_id node coordinate is a vertex of the zone's polygon exterior ring."""
-        if zones_df is None or not node_coord_map:
-            return
-
-        if '_w_id' not in zones_df.columns:
-            return
-
-        for feat_idx, row in zones_df.iterrows():
-            if len(self.errors) >= max_errors:
-                break
-
-            geom = row.geometry
-            if geom is None or geom.geom_type != 'Polygon':
-                continue
-
-            try:
-                zone_id = row['_id']
-            except KeyError:
-                zone_id = feat_idx
-
-            ring_coords = {(c[0], c[1]) for c in geom.exterior.coords}
-
-            try:
-                w_ids = row['_w_id']
-            except KeyError:
-                continue
-
-            if w_ids is None:
-                continue
-            if not isinstance(w_ids, (list, tuple)):
-                w_ids = [w_ids]
-
-            for w_id in w_ids:
-                if len(self.errors) >= max_errors:
-                    break
-                if w_id is None or w_id not in node_coord_map:
-                    continue
-                node_coord = node_coord_map[w_id]
-                if not any(self._coords_match(node_coord, rc) for rc in ring_coords):
-                    self.log_errors(
-                        message=(
-                            f"zones id '{zone_id}' : "
-                            f"node id '{w_id}' coordinate {node_coord} is not a vertex "
-                            f"of the zone polygon geometry (_w_id coordinate mismatch)."
-                        ),
-                        filename='zones',
-                        feature_index=feat_idx,
-                    )
-
-    @staticmethod
-    def _ring_vertex_count(ring) -> int:
-        coords = list(ring.coords)
-        if len(coords) > 1 and coords[0] == coords[-1]:
-            return len(coords) - 1
-        return len(coords)
+        self._record_findings(zone_mapping_findings(zones_df, node_coord_map), max_errors)
 
     def _geometry_vertex_count(self, geom) -> int:
         """Count line and polygon vertices, excluding polygon ring closure coordinates."""
-        if geom is None:
-            return 0
-        if geom.geom_type == 'LineString':
-            return len(geom.coords)
-        if geom.geom_type == 'Polygon':
-            return self._ring_vertex_count(geom.exterior) + sum(
-                self._ring_vertex_count(ring) for ring in geom.interiors
-            )
-        if geom.geom_type in {'MultiLineString', 'MultiPolygon', 'GeometryCollection'}:
-            return sum(self._geometry_vertex_count(part) for part in geom.geoms)
-        return 0
+        return geometry_vertex_count(geom)
 
     def _validate_geometry_vertex_limit(
         self,
@@ -308,47 +265,14 @@ class OSWValidation:
         max_errors: int,
     ) -> None:
         """Report line or polygon features containing more than 2,000 vertices."""
-        if gdf is None:
-            return
-
-        for feature_index, row in gdf.iterrows():
-            if len(self.errors) >= max_errors:
-                break
-
-            vertex_count = self._geometry_vertex_count(row.geometry)
-            if vertex_count <= MAX_GEOMETRY_VERTICES:
-                continue
-
-            feature_id = row.get('_id', feature_index)
-            if self._is_nullish_value(feature_id):
-                feature_id = feature_index
-            self.log_errors(
-                message=(
-                    f"Feature '{feature_id}' in '{dataset_name}' contains {vertex_count} geometry vertices. "
-                    f"Maximum allowed is {MAX_GEOMETRY_VERTICES}."
-                ),
-                filename=dataset_name,
-                feature_index=feature_index,
-            )
-
-    def _geometry_coordinate_pairs(self, geometry) -> List[tuple]:
-        """Return two-dimensional coordinate pairs from line and polygon geometries."""
-        if geometry is None or geometry.is_empty:
-            return []
-        if geometry.geom_type in {'LineString', 'LinearRing'}:
-            return [(coordinate[0], coordinate[1]) for coordinate in geometry.coords]
-        if geometry.geom_type == 'Polygon':
-            coordinates = self._geometry_coordinate_pairs(geometry.exterior)
-            for ring in geometry.interiors:
-                coordinates.extend(self._geometry_coordinate_pairs(ring))
-            return coordinates
-        if geometry.geom_type in {'MultiLineString', 'MultiPolygon', 'GeometryCollection'}:
-            return [
-                coordinate
-                for part in geometry.geoms
-                for coordinate in self._geometry_coordinate_pairs(part)
-            ]
-        return []
+        self._record_findings(
+            vertex_limit_findings(
+                gdf,
+                dataset_name,
+                self.config.max_geometry_vertices,
+            ),
+            max_errors,
+        )
 
     def _validate_collapsed_geometries(
         self,
@@ -357,95 +281,23 @@ class OSWValidation:
         max_errors: int,
     ) -> set:
         """Report line or polygon features whose coordinates all share one location."""
-        collapsed_indexes = set()
-        if gdf is None:
-            return collapsed_indexes
-
-        for feature_index, row in gdf.iterrows():
-            geometry = row.geometry
-            coordinates = self._geometry_coordinate_pairs(geometry)
-            if len(coordinates) < 2 or len(set(coordinates)) != 1:
-                continue
-
-            if geometry.geom_type in {'LineString', 'MultiLineString'}:
-                geometry_problem = 'zero-length'
-            elif geometry.geom_type in {'Polygon', 'MultiPolygon'}:
-                geometry_problem = 'zero-area'
-            else:
-                continue
-
-            collapsed_indexes.add(feature_index)
-            if len(self.errors) >= max_errors:
-                continue
-
-            feature_id = row.get('_id', feature_index)
-            if self._is_nullish_value(feature_id):
-                feature_id = feature_index
-            self.log_errors(
-                message=(
-                    f"Feature '{feature_id}' in '{dataset_name}' has {geometry_problem} geometry "
-                    "because all coordinates are identical."
-                ),
-                filename=dataset_name,
-                feature_index=feature_index,
-            )
-
-        return collapsed_indexes
+        result = collapsed_geometry_findings(
+            gdf,
+            dataset_name,
+            self.config.allow_zero_length_lines and dataset_name in {"edges", "lines"},
+        )
+        self._record_findings(result.findings, max_errors)
+        return result.collapsed_indexes
 
     def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
         """Return dataset key from exact filename suffixes only."""
-        if not text:
-            return None
-
-        basename = os.path.basename(text).lower()
-        for key in self.dataset_schema_paths:
-            if (
-                    basename == f"{key}.geojson"
-                    or basename == f"{key}.osw.geojson"
-                    or basename.endswith(f".{key}.geojson")
-                    or basename.endswith(f".{key}.osw.geojson")
-            ):
-                return key
-
-        return None
+        return schema_key_from_text(text, self.dataset_schema_paths)
 
     def _schema_key_from_schema_url(self, schema_url: Any) -> Optional[str]:
-        if not isinstance(schema_url, str):
-            return None
-
-        lower_url = schema_url.lower()
-        for key in self.dataset_schema_paths:
-            if lower_url.endswith(f"/{key}.schema.json"):
-                return key
-        return None
-
-    def _is_nullish_value(self, value: Any) -> bool:
-        if value is None:
-            return True
-        return isinstance(value, numbers.Real) and math.isnan(value)
-
-    def _collect_nullish_property_paths(self, obj: Any, prefix: str = "") -> List[Tuple[str, Any]]:
-        paths: List[Tuple[str, Any]] = []
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                next_prefix = f"{prefix}.{key}" if prefix else str(key)
-                paths.extend(self._collect_nullish_property_paths(value, next_prefix))
-            return paths
-        if isinstance(obj, list):
-            for idx, value in enumerate(obj):
-                next_prefix = f"{prefix}[{idx}]" if prefix else f"[{idx}]"
-                paths.extend(self._collect_nullish_property_paths(value, next_prefix))
-            return paths
-        if self._is_nullish_value(obj):
-            paths.append((prefix or "value", obj))
-        return paths
+        return schema_key_from_url(schema_url, self.dataset_schema_paths)
 
     def _collect_nullish_extension_property_paths(self, props: Dict[str, Any]) -> List[Tuple[str, Any]]:
-        paths: List[Tuple[str, Any]] = []
-        for key, value in props.items():
-            if isinstance(key, str) and key.startswith("ext:"):
-                paths.extend(self._collect_nullish_property_paths(value, key))
-        return paths
+        return collect_nullish_extension_property_paths(props)
 
     def _contains_disallowed_features_for_02(self, geojson_data: Dict[str, Any]) -> set:
         """Detect Tree coverage or Custom content in legacy 0.2 datasets.
@@ -453,29 +305,7 @@ class OSWValidation:
         Returns a set of reason tags, e.g. {"tree", "custom_ext", "custom_token"}.
         Empty set means no 0.2-only violations detected.
         """
-        reasons = set()
-        for feat in geojson_data.get("features", []):
-            props = feat.get("properties") or {}
-            geom = feat.get("geometry") or {}
-            geom_type = geom.get("type") if isinstance(geom, dict) else None
-            is_point = isinstance(geom_type, str) and geom_type.lower() == "point"
-
-            val = props.get("natural")
-            if isinstance(val, str) and val.strip().lower() in {"tree", "wood"}:
-                reasons.add("tree")
-            if any(k in props for k in ("leaf_cycle", "leaf_type")):
-                reasons.add("tree")
-            for k, v in props.items():
-                target = ""
-                if isinstance(v, str):
-                    target = v.lower()
-                elif isinstance(k, str):
-                    target = k.lower()
-                if any(tok in target for tok in ["custom point", "custom_point", "custompoint",
-                                                 "custom line", "custom_line", "customline",
-                                                 "custom polygon", "custom_polygon", "custompolygon"]):
-                    reasons.add("custom_token")
-        return reasons
+        return disallowed_legacy_02_features(geojson_data)
 
     # ----------------------------
     # Schema selection
@@ -583,94 +413,18 @@ class OSWValidation:
                 if osw_file:
                     OSW_DATASET[osw_file] = gdf
 
-            # Are all id's unique in each file?
-            for osw_file, gdf in OSW_DATASET.items():
-                if gdf is None:
-                    continue
-                is_valid, duplicates = self.are_ids_unique(gdf)
-                if not is_valid:
-                    total_duplicates = len(duplicates)
-                    displayed = ', '.join(map(str, duplicates[:max_errors]))
-                    if total_duplicates > max_errors:
-                        message = (f"Duplicate _id's found in {osw_file}: showing first {max_errors} "
-                                   f"of {total_duplicates} duplicates: {displayed}")
-                    else:
-                        message = f"Duplicate _id's found in {osw_file}: {displayed}"
-                    self.log_errors(
-                        message=message,
-                        filename=osw_file,
-                        feature_index=None
-                    )
+            self._record_findings(
+                identifier_integrity_findings(
+                    OSW_DATASET,
+                    max_errors,
+                    duplicate_checker=self.are_ids_unique,
+                ),
+                max_errors,
+            )
 
-            # Create sets of node id's and foreign keys to be used in validation
             nodes_df = OSW_DATASET.get('nodes')
             edges_df = OSW_DATASET.get('edges')
             zones_df = OSW_DATASET.get('zones')
-
-            node_ids = self._get_colset(nodes_df, '_id', 'nodes') if nodes_df is not None else set()
-            node_ids_edges_u = self._get_colset(edges_df, '_u_id', 'edges') if edges_df is not None else set()
-            node_ids_edges_v = self._get_colset(edges_df, '_v_id', 'edges') if edges_df is not None else set()
-
-            # zones: _w_id is list-like per feature → flatten safely
-            if zones_df is not None:
-                if '_w_id' in zones_df.columns:
-                    vals = zones_df['_w_id'].dropna().tolist()
-                    node_ids_zones_w = set(
-                        item
-                        for sub in vals
-                        for item in (sub if isinstance(sub, (list, tuple)) else [sub])
-                    )
-                else:
-                    self.log_errors("Missing required column '_w_id' in zones.", 'zones', None)
-                    node_ids_zones_w = set()
-            else:
-                node_ids_zones_w = set()
-
-            # Cross-file integrity checks (only when we have the prerequisite sets)
-            if node_ids and node_ids_edges_u:
-                unmatched = node_ids_edges_u - node_ids
-                if unmatched:
-                    unmatched_list = list(unmatched)
-                    num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, max_errors)
-                    displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
-                    self.log_errors(
-                        message=(f"All _u_id's in edges should be part of _id's mentioned in nodes. "
-                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
-                                 f"unmatched _u_id's: {displayed_unmatched}"),
-                        filename='All',
-                        feature_index=None
-                    )
-
-            if node_ids and node_ids_edges_v:
-                unmatched = node_ids_edges_v - node_ids
-                if unmatched:
-                    unmatched_list = list(unmatched)
-                    num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, max_errors)
-                    displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
-                    self.log_errors(
-                        message=(f"All _v_id's in edges should be part of _id's mentioned in nodes. "
-                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
-                                 f"unmatched _v_id's: {displayed_unmatched}"),
-                        filename='All',
-                        feature_index=None
-                    )
-
-            if node_ids and node_ids_zones_w:
-                unmatched = node_ids_zones_w - node_ids
-                if unmatched:
-                    unmatched_list = list(unmatched)
-                    num_unmatched = len(unmatched_list)
-                    limit = min(num_unmatched, max_errors)
-                    displayed_unmatched = ', '.join(map(str, unmatched_list[:limit]))
-                    self.log_errors(
-                        message=(f"All _w_id's in zones should be part of _id's mentioned in nodes. "
-                                 f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
-                                 f"unmatched _w_id's: {displayed_unmatched}"),
-                        filename='All',
-                        feature_index=None
-                    )
 
             # Geometry mapping: coordinate consistency using already-loaded GeoDataFrames
             if nodes_df is not None and len(self.errors) < max_errors:
@@ -683,33 +437,24 @@ class OSWValidation:
             for osw_file, gdf in OSW_DATASET.items():
                 if gdf is None:
                     continue
-                collapsed_indexes = self._validate_collapsed_geometries(gdf, osw_file, max_errors)
+                collapsed = collapsed_geometry_findings(
+                    gdf,
+                    osw_file,
+                    self.config.allow_zero_length_lines and osw_file in {"edges", "lines"},
+                )
+                self._record_findings(collapsed.findings, max_errors)
                 if osw_file in VERTEX_LIMIT_DATASETS and len(self.errors) < max_errors:
                     self._validate_geometry_vertex_limit(gdf, osw_file, max_errors)
                 expected_geom = OSW_DATASET_FILES.get(osw_file, {}).get('geometry')
-                if expected_geom:
-                    invalid_geojson = gdf[
-                        (gdf.geometry.type != expected_geom) | (gdf.is_valid == False)
-                        ]
-                else:
-                    invalid_geojson = gdf[gdf.is_valid == False]
-
-                if collapsed_indexes:
-                    invalid_geojson = invalid_geojson.drop(index=collapsed_indexes, errors='ignore')
-
-                if len(invalid_geojson) > 0:
-                    # Extract IDs if present, else fallback to index
-                    ids_series = invalid_geojson['_id'] if '_id' in invalid_geojson.columns else invalid_geojson.index
-                    invalid_ids = list(set(ids_series))
-                    num_invalid = len(invalid_ids)
-                    limit = min(num_invalid, max_errors)
-                    displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
-                    self.log_errors(
-                        message=(f"Showing {max_errors if num_invalid > max_errors else 'all'} out of {num_invalid} "
-                                 f"invalid {osw_file} geometries, id's of invalid geometries: {displayed_invalid}"),
-                        filename='All',
-                        feature_index=None
-                    )
+                generic = generic_invalid_geometry_finding(
+                    gdf,
+                    osw_file,
+                    expected_geom,
+                    collapsed.collapsed_indexes,
+                    max_errors,
+                )
+                if generic:
+                    self._record_findings([generic], max_errors)
 
             # Validate OSW external extensions
             for file in validator.externalExtensions:
@@ -725,37 +470,24 @@ class OSWValidation:
                     )
                     continue
 
-                if len(self.errors) < max_errors:
-                    self._validate_geometry_vertex_limit(extensionFile, file_name, max_errors)
-
-                collapsed_indexes = self._validate_collapsed_geometries(
+                collapsed = collapsed_geometry_findings(
                     extensionFile,
                     file_name,
-                    max_errors,
+                    self.config.allow_zero_length_lines,
                 )
-
-                invalid_geojson = extensionFile[extensionFile.is_valid == False]
-                if collapsed_indexes:
-                    invalid_geojson = invalid_geojson.drop(index=collapsed_indexes, errors='ignore')
-                if len(invalid_geojson) > 0:
-                    try:
-                        invalid_ids = list(set(invalid_geojson.get('_id', invalid_geojson.index)))
-                        num_invalid = len(invalid_ids)
-                        limit = min(num_invalid, max_errors)
-                        displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
-                        self.log_errors(
-                            message=(f"Invalid geometries found in extension file `{file_name}`. "
-                                     f"Showing {max_errors if num_invalid > max_errors else 'all'} of {num_invalid} "
-                                     f"invalid geometry IDs: {displayed_invalid}"),
-                            filename=file_name,
-                            feature_index=None
-                        )
-                    except Exception as e:
-                        self.log_errors(
-                            message=f"Invalid features found in `{file_name}`, but failed to extract IDs: {e}",
-                            filename=file_name,
-                            feature_index=None
-                        )
+                self._record_findings(collapsed.findings, max_errors)
+                if len(self.errors) < max_errors:
+                    self._validate_geometry_vertex_limit(extensionFile, file_name, max_errors)
+                generic = generic_invalid_geometry_finding(
+                    extensionFile,
+                    file_name,
+                    None,
+                    collapsed.collapsed_indexes,
+                    max_errors,
+                    True,
+                )
+                if generic:
+                    self._record_findings([generic], max_errors)
 
                 # Optional: Test serializability of extension file
                 try:
@@ -844,103 +576,29 @@ class OSWValidation:
             return False
 
         filename = os.path.basename(file_path)
-
-        # Upfront guard: reject null/NaN values in free-form extension properties.
-        # Schema-owned properties are left to schema validation.
-        features = geojson_data.get("features", []) if isinstance(geojson_data, dict) else []
-        found_nullish = False
-        for idx, feature in enumerate(features):
-            if not isinstance(feature, dict):
-                continue
-            props = feature.get("properties")
-            if not isinstance(props, dict):
-                continue
-            bad_paths = self._collect_nullish_extension_property_paths(props)
-            for path, bad_value in bad_paths:
-                if len(self.errors) >= max_errors:
-                    return False
-                found_nullish = True
-                rendered = f'"{bad_value}"' if isinstance(bad_value, str) else str(bad_value)
-                msg = (
-                    f"Invalid value at '{path}': {rendered}. "
-                    f"Null/NaN placeholders are not allowed; provide a valid value or remove this property."
-                )
-                self.errors.append(f"Validation error: {msg}")
-                self.issues.append({
-                    "filename": filename,
-                    "feature_index": idx,
-                    "error_message": [msg],
-                })
-        if found_nullish:
+        remaining_errors = max_errors - len(self.errors)
+        if remaining_errors <= 0:
             return False
 
-        schema_url = geojson_data.get('$schema')
-        if isinstance(schema_url, str) and '0.2/schema.json' in schema_url:
-            reasons = self._contains_disallowed_features_for_02(geojson_data)
-            if reasons:
-                dataset_key = self._schema_key_from_text(file_path) or "data"
-                custom_label_map = {
-                    "edges": "Custom Edge",
-                    "lines": "Custom Line",
-                    "polygons": "Custom Polygon",
-                    "zones": "Custom Polygon/Zone",
-                    "points": "Custom Point",
-                    "nodes": "Custom Node",
-                }
-                parts = []
-                if "tree" in reasons:
-                    parts.append("Tree coverage")
-                if "custom_ext" in reasons or "custom_token" in reasons:
-                    parts.append(custom_label_map.get(dataset_key, "Custom content"))
-                msg = f"0.2 schema does not support " + " and ".join(parts)
-                self.log_errors(
-                    message=msg,
-                    filename=os.path.basename(file_path),
-                    feature_index=None,
-                )
-                return False
+        prevalidation = prevalidate_geojson(
+            geojson_data,
+            filename,
+            self._schema_key_from_text(file_path) or "data",
+            remaining_errors,
+        )
+        if prevalidation:
+            self.errors.extend(prevalidation.errors)
+            self.issues.extend(prevalidation.issues)
+            return prevalidation.continue_validation
 
         schema_path = self.pick_schema_for_file(file_path, geojson_data)
         schema = self.load_osw_schema(schema_path)
-        validator = jsonschema_rs.Draft7Validator(schema)
-
-        # Legacy cap
-        legacy_count = 0
-        collected_issues: List[Dict[str, Any]] = []
-
-        # --- STREAM over errors; STOP as soon as legacy hits the cap ---
-        for err in validator.iter_errors(geojson_data):
-            # legacy list (for backward compatibility)
-            if legacy_count < max_errors:
-                raw_msg = _add_additional_properties_hint(getattr(err, "message", "") or "")
-                self.errors.append(f"Validation error: {raw_msg}")
-                legacy_count += 1
-            else:
-                # We've reached the legacy cap; stop work to match original performance
-                break
-
-            # Keep every issue (no per-feature collapsing)
-            fidx = _feature_index_from_error(err)
-            collected_issues.append({
-                "filename": filename,
-                "feature_index": fidx if fidx is not None else -1,
-                "error_message": [_pretty_message(err, schema)],
-                "_kind": _err_kind(err),
-            })
-
-        # Drop noisy AnyOf summaries when specific field-level errors exist
-        # for the same feature.
-        has_specific_by_feature: Dict[int, bool] = {}
-        for issue in collected_issues:
-            fidx = issue["feature_index"]
-            if issue.get("_kind") != "AnyOf":
-                has_specific_by_feature[fidx] = True
-
-        for issue in collected_issues:
-            if issue.get("_kind") == "AnyOf" and has_specific_by_feature.get(issue["feature_index"], False):
-                continue
-            issue.pop("_kind", None)
-            self.issues.append(issue)
-
-        # Mirror original boolean behavior: False when we exactly hit the cap
-        return len(self.errors) < max_errors
+        outcome = validate_against_schema(
+            geojson_data,
+            filename,
+            schema,
+            remaining_errors,
+        )
+        self.errors.extend(outcome.errors)
+        self.issues.extend(outcome.issues)
+        return outcome.continue_validation

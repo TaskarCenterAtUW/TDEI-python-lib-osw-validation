@@ -5,7 +5,13 @@
 - Added [#4047](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/4047): input coordinates with more than seven decimal places produce a non-blocking message through `ValidationResult.warnings` without changing validation errors or validity.
 - Added [#4048](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/4048): edge, line, polygon, and zone geometries containing more than 2,000 vertices are rejected, including supported external line and polygon geometries.
 - Added feature-level errors for line and polygon geometries whose coordinates all collapse to one location, including the feature ID, dataset, and feature index, while suppressing duplicate generic invalid-geometry messages.
+- Extracted geometry, coordinate mapping, identifier integrity, coordinate precision, and schema helper logic into reusable validator modules. `OSWValidation` remains the backward-compatible public orchestrator and converts immutable internal findings into the existing `errors` and `issues` response.
 - Added boundary, regression, and real-data coverage for exact coordinate matching, coordinate precision warnings, geometry vertex limits, and collapsed-geometry reporting.
+- Added backward-compatible `error_details`, `issue_details`, warning details, and validation summaries grouped by severity, code, and file; legacy `errors`, `issues`, and `warnings` remain unchanged.
+- Schema error codes use upper snake case, including `SCHEMA_ADDITIONAL_PROPERTIES`.
+- Added immutable `ValidationConfig` support for user-defined geometry vertex limits and coordinate-precision warning thresholds while preserving the existing defaults.
+- Added the opt-in `allow_zero_length_lines` configuration. It allows collapsed edges and lines without suppressing node-reference checks or permitting zero-area polygons and zones.
+- Repaired schema contract coverage for all six packaged dataset schemas and expanded CI testing to Python 3.10, 3.11, and 3.12.
 
 ### 0.4.4 - 2026-07-01
 - Fixed dataset filename classification so names containing dataset tokens in the prefix, such as `River._edges_.nodes.geojson`, are classified by their final dataset suffix instead of by loose substring matching.
