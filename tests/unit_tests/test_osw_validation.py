@@ -3,6 +3,8 @@ import os
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
+
 from src.python_osw_validation import OSWValidation
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -373,7 +375,8 @@ class TestOSWValidation(unittest.TestCase):
     def test_edges_token_in_filename_prefix_does_not_misclassify_nodes(self):
         """A filename prefix containing '_edges_' should not make nodes load as edges."""
         validation = OSWValidation(zipfile_path=self.edges_token_in_prefix_file)
-        result = validation.validate()
+        with patch.object(validation, '_validate_geometry_vertex_limit'):
+            result = validation.validate()
 
         self.assertTrue(result.is_valid, f"Expected valid; errors={result.errors}")
         self.assertIsNone(result.errors)

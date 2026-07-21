@@ -1,5 +1,12 @@
 # Change log
 
+### 0.4.5 - 2026-07-21
+- Fixed [#3982](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/3982): edge `_u_id`/`_v_id` endpoints and zone `_w_id` vertices must now exactly match their referenced node coordinates; the previous `1e-7` tolerance was removed.
+- Added [#4047](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/4047): input coordinates with more than seven decimal places produce a non-blocking message through `ValidationResult.warnings` without changing validation errors or validity.
+- Added [#4048](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/4048): edge, line, polygon, and zone geometries containing more than 2,000 vertices are rejected, including supported external line and polygon geometries.
+- Added a feature-level error for zero-length edge geometries, including the edge ID, dataset, and feature index, while suppressing the duplicate generic invalid-geometry message.
+- Added boundary, regression, and real-data coverage for exact coordinate matching, coordinate precision warnings, geometry vertex limits, and zero-length edge reporting.
+
 ### 0.4.4 - 2026-07-01
 - Fixed dataset filename classification so names containing dataset tokens in the prefix, such as `River._edges_.nodes.geojson`, are classified by their final dataset suffix instead of by loose substring matching.
 - Supported filename detection now consistently accepts only these four forms for each dataset type: `<dataset>.geojson`, `*.<dataset>.geojson`, `<dataset>.OSW.geojson`, and `*.<dataset>.OSW.geojson`.

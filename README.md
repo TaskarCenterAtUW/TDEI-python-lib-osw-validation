@@ -39,6 +39,7 @@ result = validator.validate()
 print(result.is_valid)
 print(result.errors)  # returns up to the first 20 high-level errors by default
 print(result.issues)  # detailed per-feature issues, capped to first 20 by default
+print(result.warnings)  # non-blocking coordinate precision warning, or an empty string
 
 result = validator.validate(max_errors=10)
 print(result.is_valid)

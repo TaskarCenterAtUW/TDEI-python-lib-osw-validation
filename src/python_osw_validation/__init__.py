@@ -16,6 +16,7 @@ from .helpers import (
     _feature_index_from_error,
     _pretty_message,
     _read_geojson_without_ext,
+    _geojson_file_has_excess_coordinate_precision,
 )
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
@@ -28,6 +29,10 @@ DEFAULT_DATASET_SCHEMAS = {
     "zones": os.path.join(SCHEMA_PATH, 'opensidewalks.zones.schema-0.3.json'),
 }
 
+COORDINATE_PRECISION_WARNING = "Input dataset contains coordinates with more than 7 decimal places."
+MAX_GEOMETRY_VERTICES = 2000
+VERTEX_LIMIT_DATASETS = frozenset({"edges", "lines", "polygons", "zones"})
+
 
 class ValidationResult:
     """Container for validation outcome.
@@ -35,16 +40,18 @@ class ValidationResult:
     * `errors`: high-level, human-readable strings (legacy behavior).
     * `issues`: per-feature schema problems (former `fixme`), each item:
         { 'filename': str, 'feature_index': Optional[int], 'error_message': List[str] }
+    * `warnings`: non-blocking validation warning string.
     """
 
     def __init__(self, is_valid: bool, errors: Optional[List[str]] = None,
-                 issues: Optional[List[Dict[str, Any]]] = None):
+                 issues: Optional[List[Dict[str, Any]]] = None, warnings: str = ""):
         self.is_valid = is_valid
         if len(errors) == 0:
             self.errors = None
         else:
             self.errors = errors
         self.issues = issues
+        self.warnings = warnings
 
 
 class OSWValidation:
@@ -69,6 +76,7 @@ class OSWValidation:
         self.errors: List[str] = []
         # per-feature schema issues (formerly `fixme`)
         self.issues: List[Dict[str, Any]] = []
+        self.warnings = ""
 
         # Legacy single schema (if set, used for all)
         self.schema_file_path = schema_file_path  # may be None
@@ -95,6 +103,17 @@ class OSWValidation:
             'error_message': message,
         })
 
+    def _check_coordinate_precision(self, file_paths) -> None:
+        """Set one aggregate warning without affecting validation state."""
+        for file_path in file_paths:
+            try:
+                if _geojson_file_has_excess_coordinate_precision(str(file_path)):
+                    self.warnings = COORDINATE_PRECISION_WARNING
+                    return
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                # Existing parsing and schema validation own all functional errors.
+                continue
+
     # add this small helper inside OSWValidation (near other helpers)
     def _get_colset(self, gdf: Optional[gpd.GeoDataFrame], col: str, filekey: str) -> set:
         """Return set of a column if present; else log and return empty set."""
@@ -117,10 +136,8 @@ class OSWValidation:
     # Geometry mapping helpers
     # ----------------------------
 
-    _COORD_TOLERANCE = 1e-7  # ~1 cm at equator
-
     def _coords_match(self, c1: tuple, c2: tuple) -> bool:
-        return abs(c1[0] - c2[0]) <= self._COORD_TOLERANCE and abs(c1[1] - c2[1]) <= self._COORD_TOLERANCE
+        return c1 == c2
 
     def _build_node_coord_map(self, nodes_df: gpd.GeoDataFrame) -> Dict[Any, tuple]:
         """Return {node_id: (lon, lat)} from a nodes GeoDataFrame."""
@@ -263,6 +280,94 @@ class OSWValidation:
                         feature_index=feat_idx,
                     )
 
+    @staticmethod
+    def _ring_vertex_count(ring) -> int:
+        coords = list(ring.coords)
+        if len(coords) > 1 and coords[0] == coords[-1]:
+            return len(coords) - 1
+        return len(coords)
+
+    def _geometry_vertex_count(self, geom) -> int:
+        """Count line and polygon vertices, excluding polygon ring closure coordinates."""
+        if geom is None:
+            return 0
+        if geom.geom_type == 'LineString':
+            return len(geom.coords)
+        if geom.geom_type == 'Polygon':
+            return self._ring_vertex_count(geom.exterior) + sum(
+                self._ring_vertex_count(ring) for ring in geom.interiors
+            )
+        if geom.geom_type in {'MultiLineString', 'MultiPolygon', 'GeometryCollection'}:
+            return sum(self._geometry_vertex_count(part) for part in geom.geoms)
+        return 0
+
+    def _validate_geometry_vertex_limit(
+        self,
+        gdf: Optional[gpd.GeoDataFrame],
+        dataset_name: str,
+        max_errors: int,
+    ) -> None:
+        """Report line or polygon features containing more than 2,000 vertices."""
+        if gdf is None:
+            return
+
+        for feature_index, row in gdf.iterrows():
+            if len(self.errors) >= max_errors:
+                break
+
+            vertex_count = self._geometry_vertex_count(row.geometry)
+            if vertex_count <= MAX_GEOMETRY_VERTICES:
+                continue
+
+            feature_id = row.get('_id', feature_index)
+            if self._is_nullish_value(feature_id):
+                feature_id = feature_index
+            self.log_errors(
+                message=(
+                    f"Feature '{feature_id}' in '{dataset_name}' contains {vertex_count} geometry vertices. "
+                    f"Maximum allowed is {MAX_GEOMETRY_VERTICES}."
+                ),
+                filename=dataset_name,
+                feature_index=feature_index,
+            )
+
+    def _validate_zero_length_edges(
+        self,
+        edges_df: Optional[gpd.GeoDataFrame],
+        max_errors: int,
+    ) -> set:
+        """Report zero-length LineStrings and return their feature indexes."""
+        zero_length_indexes = set()
+        if edges_df is None:
+            return zero_length_indexes
+
+        for feature_index, row in edges_df.iterrows():
+            geometry = row.geometry
+            if (
+                geometry is None
+                or geometry.geom_type != 'LineString'
+                or geometry.is_empty
+                or geometry.length != 0
+            ):
+                continue
+
+            zero_length_indexes.add(feature_index)
+            if len(self.errors) >= max_errors:
+                continue
+
+            feature_id = row.get('_id', feature_index)
+            if self._is_nullish_value(feature_id):
+                feature_id = feature_index
+            self.log_errors(
+                message=(
+                    f"Edge '{feature_id}' has zero-length geometry because all coordinates are identical."
+                ),
+                filename='edges',
+                feature_index=feature_index,
+            )
+
+        return zero_length_indexes
+
     def _schema_key_from_text(self, text: Optional[str]) -> Optional[str]:
         """Return dataset key from exact filename suffixes only."""
         if not text:
@@ -394,7 +499,7 @@ class OSWValidation:
             final_errors = self.errors if errors is None else errors
             final_errors = (final_errors or [])[:max_errors]
             final_issues = (self.issues or [])[:max_errors]
-            return ValidationResult(is_valid, final_errors, final_issues)
+            return ValidationResult(is_valid, final_errors, final_issues, self.warnings)
 
         zip_handler = None
         OSW_DATASET: Dict[str, Optional[gpd.GeoDataFrame]] = {}
@@ -422,6 +527,11 @@ class OSWValidation:
                     feature_index=None
                 )
                 return _finalize(False)
+
+            self._check_coordinate_precision(
+                list(getattr(validator, 'files', []) or [])
+                + list(getattr(validator, 'externalExtensions', []) or [])
+            )
 
             # Per-file schema validation → populate self.issues (fixme-like)
             for file in validator.files:
@@ -549,6 +659,11 @@ class OSWValidation:
             for osw_file, gdf in OSW_DATASET.items():
                 if gdf is None:
                     continue
+                zero_length_indexes = set()
+                if osw_file == 'edges':
+                    zero_length_indexes = self._validate_zero_length_edges(gdf, max_errors)
+                if osw_file in VERTEX_LIMIT_DATASETS and len(self.errors) < max_errors:
+                    self._validate_geometry_vertex_limit(gdf, osw_file, max_errors)
                 expected_geom = OSW_DATASET_FILES.get(osw_file, {}).get('geometry')
                 if expected_geom:
                     invalid_geojson = gdf[
@@ -556,6 +671,9 @@ class OSWValidation:
                         ]
                 else:
                     invalid_geojson = gdf[gdf.is_valid == False]
+
+                if zero_length_indexes:
+                    invalid_geojson = invalid_geojson.drop(index=zero_length_indexes, errors='ignore')
 
                 if len(invalid_geojson) > 0:
                     # Extract IDs if present, else fallback to index
@@ -584,6 +702,9 @@ class OSWValidation:
                         feature_index=None
                     )
                     continue
+
+                if len(self.errors) < max_errors:
+                    self._validate_geometry_vertex_limit(extensionFile, file_name, max_errors)
 
                 invalid_geojson = extensionFile[extensionFile.is_valid == False]
                 if len(invalid_geojson) > 0:

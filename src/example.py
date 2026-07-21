@@ -21,6 +21,7 @@ def valid_test_without_provided_schema():
     validator = OSWValidation(zipfile_path=VALID_ZIP_FILE)
     result = validator.validate()
     print(result.issues)
+    print(result.warnings)
     # print(f'Valid Test Without Schema: {"Passed" if result.is_valid else "Failed"}')
 
 
