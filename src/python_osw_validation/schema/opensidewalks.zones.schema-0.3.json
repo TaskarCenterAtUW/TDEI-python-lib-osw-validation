@@ -255,25 +255,6 @@
                       "yes"
                     ],
                     "type": "string"
-                  },
-                  "name": {
-                    "description": "A field for a designated name for an entity. Example: an official name for a trail.",
-                    "type": "string"
-                  },
-                  "surface": {
-                    "description": "A field for the surface material of the path.",
-                    "enum": [
-                      "asphalt",
-                      "concrete",
-                      "dirt",
-                      "grass",
-                      "grass_paver",
-                      "gravel",
-                      "paved",
-                      "paving_stones",
-                      "unpaved"
-                    ],
-                    "type": "string"
                   }
                 },
                 "required": [

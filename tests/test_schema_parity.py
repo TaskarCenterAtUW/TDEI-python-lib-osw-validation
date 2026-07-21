@@ -6,10 +6,14 @@ import jsonschema_rs
 SCHEMA_DIR = Path(__file__).parent.parent / "src" / "python_osw_validation" / "schema"
 FIXTURES_DIR = Path(__file__).parent / "schema" / "fixtures"
 
-PAIRS = {
-    "nodes": ("nodes.schema.json", "opensidewalks.nodes.schema-0.3.json"),
-    "edges": ("edges.schema.json", "opensidewalks.edges.schema-0.3.json"),
-    "zones": ("zones.schema.json", "opensidewalks.zones.schema-0.3.json"),
+SOURCE_SCHEMA = "opensidewalks.schema-0.3.json"
+SHORT_SCHEMAS = {
+    "nodes": "opensidewalks.nodes.schema-0.3.json",
+    "edges": "opensidewalks.edges.schema-0.3.json",
+    "points": "opensidewalks.points.schema-0.3.json",
+    "lines": "opensidewalks.lines.schema-0.3.json",
+    "polygons": "opensidewalks.polygons.schema-0.3.json",
+    "zones": "opensidewalks.zones.schema-0.3.json",
 }
 
 
@@ -19,7 +23,7 @@ def load(path: Path):
 
 
 def validator(schema_name: str, customized: bool):
-    fname = PAIRS[schema_name][1 if customized else 0]
+    fname = SHORT_SCHEMAS[schema_name] if customized else SOURCE_SCHEMA
     schema = load(SCHEMA_DIR / fname)
     return jsonschema_rs.Draft7Validator(schema)
 
@@ -57,14 +61,12 @@ def test_edges_accept_custom_edge_without_highway():
     assert ours.is_valid(data)
 
 
-def test_edges_schema_02_rejects_custom_extensions():
+def test_edges_schema_02_allows_ext_fields_without_custom_tokens():
     data = run_fixture("edges", "invalid_custom_edge_schema02.json")
-    # In 0.2 datasets, custom extensions (ext:*) are not allowed; this is enforced
-    # by the validator's 0.2 compatibility guard.
     from src.python_osw_validation import OSWValidation
     guard = OSWValidation(zipfile_path="dummy.zip")
     reasons = guard._contains_disallowed_features_for_02(data)
-    assert reasons == {"custom_token"}
+    assert reasons == set()
 
 
 def test_nodes_schema_02_allows_ext_fields():
@@ -99,12 +101,12 @@ def test_custom_line_schema03_accepts():
     assert ours.is_valid(data)
 
 
-def test_custom_line_schema02_rejects_ext():
+def test_line_schema02_allows_ext_fields_without_custom_tokens():
     data = run_fixture("lines", "invalid_custom_line_schema02.json")
     from src.python_osw_validation import OSWValidation
     guard = OSWValidation(zipfile_path="dummy.zip")
     reasons = guard._contains_disallowed_features_for_02(data)
-    assert reasons == {"custom_token"}
+    assert reasons == set()
 
 
 def test_custom_polygon_schema03_accepts():
@@ -115,20 +117,20 @@ def test_custom_polygon_schema03_accepts():
     assert ours.is_valid(data)
 
 
-def test_custom_polygon_schema02_rejects_ext():
+def test_polygon_schema02_allows_ext_fields_without_custom_tokens():
     data = run_fixture("polygons", "invalid_custom_polygon_schema02.json")
     from src.python_osw_validation import OSWValidation
     guard = OSWValidation(zipfile_path="dummy.zip")
     reasons = guard._contains_disallowed_features_for_02(data)
-    assert reasons == {"custom_token"}
+    assert reasons == set()
 
 
-def test_custom_zone_schema02_rejects_ext():
+def test_zone_schema02_allows_ext_fields_without_custom_tokens():
     data = run_fixture("zones", "invalid_custom_zone_schema02.json")
     from src.python_osw_validation import OSWValidation
     guard = OSWValidation(zipfile_path="dummy.zip")
     reasons = guard._contains_disallowed_features_for_02(data)
-    assert reasons == {"custom_token"}
+    assert reasons == set()
 
 
 # --- Zones ---
