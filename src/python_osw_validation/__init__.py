@@ -8,6 +8,11 @@ import geopandas as gpd
 import jsonschema_rs
 
 from .zipfile_handler import ZipFileHandler
+from .config import (
+    DEFAULT_COORDINATE_PRECISION,
+    DEFAULT_MAX_GEOMETRY_VERTICES,
+    ValidationConfig,
+)
 from .extracted_data_validator import ExtractedDataValidator, OSW_DATASET_FILES, dataset_key_for_filename
 from .version import __version__
 from .helpers import (
@@ -29,8 +34,11 @@ DEFAULT_DATASET_SCHEMAS = {
     "zones": os.path.join(SCHEMA_PATH, 'opensidewalks.zones.schema-0.3.json'),
 }
 
-COORDINATE_PRECISION_WARNING = "Input dataset contains coordinates with more than 7 decimal places."
-MAX_GEOMETRY_VERTICES = 2000
+COORDINATE_PRECISION_WARNING = (
+    "Input dataset contains coordinates with more than "
+    f"{DEFAULT_COORDINATE_PRECISION} decimal places."
+)
+MAX_GEOMETRY_VERTICES = DEFAULT_MAX_GEOMETRY_VERTICES
 VERTEX_LIMIT_DATASETS = frozenset({"edges", "lines", "polygons", "zones"})
 
 
@@ -70,6 +78,7 @@ class OSWValidation:
             point_schema_path: Optional[str] = None,
             line_schema_path: Optional[str] = None,
             polygon_schema_path: Optional[str] = None,
+            config: Optional[ValidationConfig] = None,
     ):
         self.zipfile_path = zipfile_path
         self.extracted_dir: Optional[str] = None
@@ -77,6 +86,9 @@ class OSWValidation:
         # per-feature schema issues (formerly `fixme`)
         self.issues: List[Dict[str, Any]] = []
         self.warnings = ""
+        if config is not None and not isinstance(config, ValidationConfig):
+            raise TypeError("config must be a ValidationConfig instance.")
+        self.config = config or ValidationConfig()
 
         # Legacy single schema (if set, used for all)
         self.schema_file_path = schema_file_path  # may be None
@@ -107,8 +119,14 @@ class OSWValidation:
         """Set one aggregate warning without affecting validation state."""
         for file_path in file_paths:
             try:
-                if _geojson_file_has_excess_coordinate_precision(str(file_path)):
-                    self.warnings = COORDINATE_PRECISION_WARNING
+                if _geojson_file_has_excess_coordinate_precision(
+                    str(file_path),
+                    self.config.coordinate_precision,
+                ):
+                    self.warnings = (
+                        "Input dataset contains coordinates with more than "
+                        f"{self.config.coordinate_precision} decimal places."
+                    )
                     return
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
                 # Existing parsing and schema validation own all functional errors.
@@ -307,7 +325,7 @@ class OSWValidation:
         dataset_name: str,
         max_errors: int,
     ) -> None:
-        """Report line or polygon features containing more than 2,000 vertices."""
+        """Report line or polygon features exceeding the configured vertex limit."""
         if gdf is None:
             return
 
@@ -316,7 +334,7 @@ class OSWValidation:
                 break
 
             vertex_count = self._geometry_vertex_count(row.geometry)
-            if vertex_count <= MAX_GEOMETRY_VERTICES:
+            if vertex_count <= self.config.max_geometry_vertices:
                 continue
 
             feature_id = row.get('_id', feature_index)
@@ -325,7 +343,7 @@ class OSWValidation:
             self.log_errors(
                 message=(
                     f"Feature '{feature_id}' in '{dataset_name}' contains {vertex_count} geometry vertices. "
-                    f"Maximum allowed is {MAX_GEOMETRY_VERTICES}."
+                    f"Maximum allowed is {self.config.max_geometry_vertices}."
                 ),
                 filename=dataset_name,
                 feature_index=feature_index,
@@ -375,6 +393,13 @@ class OSWValidation:
                 continue
 
             collapsed_indexes.add(feature_index)
+            allow_zero_length_line = (
+                self.config.allow_zero_length_lines
+                and geometry.geom_type == 'LineString'
+                and dataset_name not in {"nodes", "points", "polygons", "zones"}
+            )
+            if allow_zero_length_line:
+                continue
             if len(self.errors) >= max_errors:
                 continue
 

@@ -9,7 +9,7 @@ import geopandas as gpd
 from shapely.geometry import Point, LineString, Polygon
 
 import src.python_osw_validation as osw_mod
-from src.python_osw_validation import OSWValidation
+from src.python_osw_validation import OSWValidation, ValidationConfig
 
 # Build a robust patch prefix from the module actually imported
 _PATCH_PREFIX = osw_mod.__name__
@@ -1163,7 +1163,10 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             PZip.return_value = z
             PVal.return_value = self._fake_validator(fake_files)
 
-            result = OSWValidation(zipfile_path="dummy.zip").validate()
+            result = OSWValidation(
+                zipfile_path="dummy.zip",
+                config=ValidationConfig(allow_zero_length_lines=False),
+            ).validate()
 
         expected_message = (
             "Feature 'edge-zero' in 'edges' has zero-length geometry because all coordinates are identical."
@@ -1178,6 +1181,54 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             }],
         )
         self.assertFalse(any("invalid edges geometries" in error for error in result.errors))
+
+    def test_zero_length_edge_is_valid_when_enabled(self):
+        coordinate = (-122.335167, 47.608013)
+        nodes = gpd.GeoDataFrame(
+            {
+                "_id": ["node-seattle-001", "node-seattle-002"],
+                "geometry": [Point(*coordinate), Point(*coordinate)],
+            },
+            geometry="geometry",
+            crs="EPSG:4326",
+        )
+        edges = gpd.GeoDataFrame(
+            {
+                "_id": ["edge-seattle-001"],
+                "_u_id": ["node-seattle-001"],
+                "_v_id": ["node-seattle-002"],
+                "footway": ["sidewalk"],
+                "highway": ["footway"],
+                "length": [0],
+                "geometry": [LineString([coordinate, coordinate])],
+            },
+            geometry="geometry",
+            crs="EPSG:4326",
+        )
+
+        def read_file(path):
+            return nodes if "nodes" in os.path.basename(path) else edges
+
+        fake_files = ["/tmp/nodes.geojson", "/tmp/edges.geojson"]
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE, side_effect=read_file), \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+            PVal.return_value = self._fake_validator(fake_files)
+
+            result = OSWValidation(
+                zipfile_path="dummy.zip",
+                config=ValidationConfig(allow_zero_length_lines=True),
+            ).validate()
+
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+        self.assertEqual(result.issues, [])
 
     def test_closed_nonzero_edge_is_not_reported_as_zero_length(self):
         edges = gpd.GeoDataFrame(
@@ -1210,7 +1261,10 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
                     crs="EPSG:4326",
                     index=[5],
                 )
-                validator = OSWValidation(zipfile_path="dummy.zip")
+                validator = OSWValidation(
+                    zipfile_path="dummy.zip",
+                    config=ValidationConfig(allow_zero_length_lines=False),
+                )
 
                 indexes = validator._validate_collapsed_geometries(
                     gdf,
@@ -1240,7 +1294,7 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
         self.assertEqual(indexes, set())
         self.assertEqual(validator.errors, [])
 
-    def test_collapsed_external_geometry_reports_specific_error_without_generic_error(self):
+    def test_collapsed_external_line_is_rejected_by_default_without_generic_duplicate(self):
         extension = gpd.GeoDataFrame(
             {
                 "_id": ["external-line"],
@@ -1266,16 +1320,45 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
 
             result = OSWValidation(zipfile_path="dummy.zip").validate()
 
-        self.assertEqual(
-            result.errors,
-            [
-                "Feature 'external-line' in 'custom.geojson' has zero-length geometry "
-                "because all coordinates are identical."
-            ],
+        expected_message = (
+            "Feature 'external-line' in 'custom.geojson' has zero-length geometry "
+            "because all coordinates are identical."
         )
-        self.assertEqual(result.issues[0]["filename"], "custom.geojson")
-        self.assertEqual(result.issues[0]["feature_index"], 9)
+        self.assertFalse(result.is_valid)
+        self.assertEqual(result.errors, [expected_message])
         self.assertFalse(any("Invalid geometries found" in error for error in result.errors))
+
+    def test_collapsed_external_line_is_allowed_when_enabled(self):
+        extension = gpd.GeoDataFrame(
+            {
+                "_id": ["external-line"],
+                "geometry": [LineString([(2, 2), (2, 2)])],
+            },
+            geometry="geometry",
+            crs="EPSG:4326",
+        )
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_READ_FILE, return_value=extension):
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+
+            val = MagicMock()
+            val.files = []
+            val.externalExtensions = ["/tmp/custom.geojson"]
+            val.is_valid.return_value = True
+            PVal.return_value = val
+
+            result = OSWValidation(
+                zipfile_path="dummy.zip",
+                config=ValidationConfig(allow_zero_length_lines=True),
+            ).validate()
+
+        self.assertTrue(result.is_valid)
+        self.assertIsNone(result.errors)
+        self.assertEqual(result.issues, [])
 
 
 class TestGeometryVertexLimit(unittest.TestCase):
