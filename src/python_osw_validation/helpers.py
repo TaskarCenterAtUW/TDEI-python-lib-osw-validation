@@ -1,8 +1,52 @@
-from typing import Optional
 import json
 import re
+from decimal import Decimal
+from typing import Any, Optional
 
 import geopandas as gpd
+
+
+def _coordinate_values_exceed_decimal_places(values: Any, max_decimal_places: int) -> bool:
+    if isinstance(values, Decimal):
+        return values.is_finite() and max(0, -values.as_tuple().exponent) > max_decimal_places
+    if isinstance(values, list):
+        return any(_coordinate_values_exceed_decimal_places(value, max_decimal_places) for value in values)
+    return False
+
+
+def _geometry_exceeds_coordinate_precision(geometry: Any, max_decimal_places: int) -> bool:
+    if not isinstance(geometry, dict):
+        return False
+    if _coordinate_values_exceed_decimal_places(geometry.get("coordinates"), max_decimal_places):
+        return True
+    geometries = geometry.get("geometries", [])
+    if not isinstance(geometries, list):
+        return False
+    return any(
+        _geometry_exceeds_coordinate_precision(child, max_decimal_places)
+        for child in geometries
+    )
+
+
+def _geojson_file_has_excess_coordinate_precision(file_path: str, max_decimal_places: int = 7) -> bool:
+    """Return whether serialized GeoJSON coordinates exceed the decimal-place limit."""
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file, parse_float=Decimal)
+
+    if not isinstance(data, dict):
+        return False
+    if data.get("type") == "FeatureCollection":
+        features = data.get("features", [])
+        if not isinstance(features, list):
+            return False
+        return any(
+            isinstance(feature, dict)
+            and _geometry_exceeds_coordinate_precision(feature.get("geometry"), max_decimal_places)
+            for feature in features
+        )
+    if data.get("type") == "Feature":
+        return _geometry_exceeds_coordinate_precision(data.get("geometry"), max_decimal_places)
+    return _geometry_exceeds_coordinate_precision(data, max_decimal_places)
 
 
 def _read_geojson_without_ext(file_path: str) -> gpd.GeoDataFrame:

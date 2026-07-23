@@ -39,12 +39,44 @@ result = validator.validate()
 print(result.is_valid)
 print(result.errors)  # returns up to the first 20 high-level errors by default
 print(result.issues)  # detailed per-feature issues, capped to first 20 by default
+print(result.warnings)  # non-blocking coordinate precision warning, or an empty string
 
 result = validator.validate(max_errors=10)
 print(result.is_valid)
 print(result.errors)  # returns up to the first 10 high-level errors
 print(result.issues)  # capped by the same max_errors limit
 ```
+
+### Validation configuration
+
+Use `ValidationConfig` to override validation behavior for one validator instance.
+When no configuration is supplied, the documented defaults are used.
+
+```python
+from python_osw_validation import OSWValidation, ValidationConfig
+
+config = ValidationConfig(
+    max_geometry_vertices=3000,
+    coordinate_precision=8,
+    allow_zero_length_lines=True,
+)
+
+validator = OSWValidation(
+    zipfile_path="dataset.zip",
+    config=config,
+)
+result = validator.validate()
+```
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `max_geometry_vertices` | `2000` | Maximum allowed vertices for edges, lines, polygons, and zones. Must be an integer greater than zero. |
+| `coordinate_precision` | `7` | Maximum coordinate decimal places before a non-blocking warning is reported. Must be a non-negative integer. |
+| `allow_zero_length_lines` | `False` | Rejects collapsed `LineString` geometries by default. Set to `True` to allow them in edges, lines, and external line data. |
+
+Allowing zero-length lines does not bypass `_u_id`/`_v_id` existence or exact
+node-coordinate checks. Zero-area polygons and zones, collapsed `MultiLineString`
+geometries, and line geometries in point datasets remain invalid.
 
 ## Error behavior
 

@@ -1,10 +1,10 @@
 import os
-from python_osw_validation import OSWValidation
+from python_osw_validation import OSWValidation, ValidationConfig
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(PARENT_DIR, 'tests/assets')
 # VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'valid 2.zip')
-VALID_ZIP_FILE = os.path.join(ASSETS_DIR, '33493.zip')
+VALID_ZIP_FILE = os.path.join(ASSETS_DIR, 'issue_2_sanitize.zip')
 INVALID_ZIP_FILE = os.path.join(ASSETS_DIR, '4151.zip')
 INVALID_VANCOUVER_ZIP_FILE = os.path.join(ASSETS_DIR, 'vancouver-dataset.zip')
 SCHEMA_DIR = os.path.join(PARENT_DIR, 'src/python_osw_validation/schema')
@@ -18,9 +18,15 @@ def valid_test_with_provided_schema():
 
 
 def valid_test_without_provided_schema():
-    validator = OSWValidation(zipfile_path=VALID_ZIP_FILE)
+    config = ValidationConfig(
+        max_geometry_vertices=1,
+        coordinate_precision=7,
+        allow_zero_length_lines=True,
+    )
+    validator = OSWValidation(zipfile_path=VALID_ZIP_FILE, config=config)
     result = validator.validate()
     print(result.issues)
+    print(result.warnings)
     # print(f'Valid Test Without Schema: {"Passed" if result.is_valid else "Failed"}')
 
 
