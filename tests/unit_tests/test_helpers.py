@@ -275,5 +275,41 @@ class TestReadGeojsonWithoutExt(unittest.TestCase):
         self.assertIsNotNone(gdf.crs)
 
 
+class TestCoordinatePrecisionWarning(unittest.TestCase):
+    def _write_geojson_text(self, coordinates, geometry_type="Point"):
+        fd, path = tempfile.mkstemp(suffix=".geojson")
+        os.close(fd)
+        with open(path, "w") as file:
+            file.write(
+                '{"type":"FeatureCollection","features":['
+                '{"type":"Feature","properties":{},"geometry":'
+                f'{{"type":"{geometry_type}","coordinates":{coordinates}}}'
+                '}]}'
+            )
+        self.addCleanup(os.remove, path)
+        return path
+
+    def test_exactly_seven_decimal_places_has_no_warning(self):
+        path = self._write_geojson_text("[-122.1234567,47.1234567]")
+        self.assertFalse(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+    def test_longitude_over_seven_decimal_places_has_warning(self):
+        path = self._write_geojson_text("[-122.12345678,47.1234567]")
+        self.assertTrue(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+    def test_latitude_over_seven_decimal_places_has_warning(self):
+        path = self._write_geojson_text("[-122.1234567,47.12345678]")
+        self.assertTrue(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+    def test_integer_coordinates_have_no_warning(self):
+        path = self._write_geojson_text("[-122,47]")
+        self.assertFalse(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+    def test_nested_polygon_coordinates_are_checked(self):
+        coordinates = "[[[-122.1234567,47.1234567],[-122.12345678,47.2],[-122.1,47.1]]]"
+        path = self._write_geojson_text(coordinates, geometry_type="Polygon")
+        self.assertTrue(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -415,7 +415,6 @@
                     "enum": [
                       "broadleaved",
                       "leafless",
-                      "mixed",
                       "needleleaved"
                     ],
                     "type": "string"
