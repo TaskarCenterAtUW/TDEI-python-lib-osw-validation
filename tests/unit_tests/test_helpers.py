@@ -275,7 +275,7 @@ class TestReadGeojsonWithoutExt(unittest.TestCase):
         self.assertIsNotNone(gdf.crs)
 
 
-class TestCoordinatePrecisionWarning(unittest.TestCase):
+class TestCoordinatePrecision(unittest.TestCase):
     def _write_geojson_text(self, coordinates, geometry_type="Point"):
         fd, path = tempfile.mkstemp(suffix=".geojson")
         os.close(fd)
@@ -309,6 +309,67 @@ class TestCoordinatePrecisionWarning(unittest.TestCase):
         coordinates = "[[[-122.1234567,47.1234567],[-122.12345678,47.2],[-122.1,47.1]]]"
         path = self._write_geojson_text(coordinates, geometry_type="Polygon")
         self.assertTrue(helpers._geojson_file_has_excess_coordinate_precision(path))
+
+    def test_precision_is_judged_on_digits_not_on_value(self):
+        """A value one ten-billionth away from 49.0 is still over-precise."""
+        cases = (
+            ("[-122.1234567,48.9999999999]", True),
+            ("[-122.1234567,49.0000000001]", True),
+            ("[-122.1234567,49.00000000]", True),
+            ("[-122.1234567,49.0000000]", False),
+            ("[-122.1234567,49.0]", False),
+            ("[-122.1234567,49]", False),
+        )
+        for coordinates, expected in cases:
+            with self.subTest(coordinates=coordinates):
+                path = self._write_geojson_text(coordinates)
+                self.assertEqual(
+                    helpers._geojson_file_has_excess_coordinate_precision(path),
+                    expected,
+                )
+
+    def test_exponent_notation_is_measured_after_normalization(self):
+        over_precise = self._write_geojson_text("[-122.1234567,4.90000000001e1]")
+        exact = self._write_geojson_text("[-122.1234567,4.9e1]")
+
+        self.assertTrue(helpers._geojson_file_has_excess_coordinate_precision(over_precise))
+        self.assertFalse(helpers._geojson_file_has_excess_coordinate_precision(exact))
+
+    def test_offending_feature_indices_are_reported(self):
+        fd, path = tempfile.mkstemp(suffix=".geojson")
+        os.close(fd)
+        with open(path, "w") as file:
+            file.write(
+                '{"type":"FeatureCollection","features":['
+                '{"type":"Feature","properties":{},"geometry":'
+                '{"type":"Point","coordinates":[-122.1234567,47.1234567]}},'
+                '{"type":"Feature","properties":{},"geometry":'
+                '{"type":"Point","coordinates":[-122.12345678,47.1]}},'
+                '{"type":"Feature","properties":{},"geometry":'
+                '{"type":"Point","coordinates":[-122.1,47.123456789]}}'
+                ']}'
+            )
+        self.addCleanup(os.remove, path)
+
+        self.assertEqual(
+            helpers._geojson_features_exceeding_coordinate_precision(path),
+            [1, 2],
+        )
+
+    def test_single_feature_document_reports_none_index(self):
+        fd, path = tempfile.mkstemp(suffix=".geojson")
+        os.close(fd)
+        with open(path, "w") as file:
+            file.write(
+                '{"type":"Feature","properties":{},"geometry":'
+                '{"type":"Point","coordinates":[-122.12345678,47.1]}}'
+            )
+        self.addCleanup(os.remove, path)
+
+        self.assertEqual(
+            helpers._geojson_features_exceeding_coordinate_precision(path),
+            [None],
+        )
 
 
 if __name__ == "__main__":

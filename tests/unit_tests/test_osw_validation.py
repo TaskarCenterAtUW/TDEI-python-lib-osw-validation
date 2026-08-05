@@ -5,11 +5,15 @@ import unittest
 import zipfile
 from unittest.mock import patch
 
-from src.python_osw_validation import OSWValidation
+from src.python_osw_validation import OSWValidation, ValidationConfig
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ASSETS_PATH = os.path.join(PARENT_DIR, 'assets')
+# Several legacy fixtures carry coordinates with more than 7 decimal places, which is
+# now an error. Tests targeting unrelated checks relax that limit so the fixture still
+# reaches the behavior under test.
+LENIENT_PRECISION = ValidationConfig(coordinate_precision=15)
 SCHEMA_DIR = os.path.join(SRC_DIR, 'src/python_osw_validation/schema')
 SCHEMA_FILE_PATH = os.path.join(SCHEMA_DIR, 'opensidewalks.schema-0.3.json')
 SCHEMA_PATHS = {
@@ -306,7 +310,7 @@ class TestOSWValidation(unittest.TestCase):
         error_message = next((err for err in result.errors if 'non-serializable' in err.lower()), None)
 
     def test_unmatched_ids_limited_to_20(self):
-        validation = OSWValidation(zipfile_path=self.invalid_v_id_file)
+        validation = OSWValidation(zipfile_path=self.invalid_v_id_file, config=LENIENT_PRECISION)
         result = validation.validate()
 
         # Ensure validation fails
@@ -329,7 +333,7 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIn('Showing 20 out of', error_message)
 
     def test_task_3469_issue_payload(self):
-        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        validation = OSWValidation(zipfile_path=self.task_3469_file, config=LENIENT_PRECISION)
         result = validation.validate(max_errors=500)
         self.assertFalse(result.is_valid)
         self.assertIsInstance(result.issues, list)
@@ -338,18 +342,18 @@ class TestOSWValidation(unittest.TestCase):
         self.assertIn("Invalid value at 'climb': 'null'.", flattened)
 
     def test_task_3469_string_nulls_go_through_schema_validation(self):
-        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        validation = OSWValidation(zipfile_path=self.task_3469_file, config=LENIENT_PRECISION)
         default_result = validation.validate()
         self.assertFalse(default_result.is_valid)
         self.assertEqual(len(default_result.issues), 3)
 
-        validation = OSWValidation(zipfile_path=self.task_3469_file)
+        validation = OSWValidation(zipfile_path=self.task_3469_file, config=LENIENT_PRECISION)
         override_result = validation.validate(max_errors=500)
         self.assertFalse(override_result.is_valid)
         self.assertEqual(len(override_result.issues), 3)
 
     def test_issue_3297_issue_payload(self):
-        validation = OSWValidation(zipfile_path=self.issue_3297_file)
+        validation = OSWValidation(zipfile_path=self.issue_3297_file, config=LENIENT_PRECISION)
         result = validation.validate(max_errors=100)
         self.assertFalse(result.is_valid)
         self.assertEqual(len(result.issues), 3)
@@ -402,7 +406,7 @@ class TestOSWValidation(unittest.TestCase):
             None,
         )
         self.assertIsNotNone(mismatch_issue)
-        self.assertEqual(mismatch_issue['filename'], 'edges')
+        self.assertEqual(mismatch_issue['filename'], 'opensidewalks.edges.geojson')
         self.assertIsNotNone(mismatch_issue['feature_index'])
 
     def test_edge_v_id_coord_mismatch_fails(self):
@@ -434,7 +438,7 @@ class TestOSWValidation(unittest.TestCase):
             None,
         )
         self.assertIsNotNone(mismatch_issue)
-        self.assertEqual(mismatch_issue['filename'], 'zones')
+        self.assertEqual(mismatch_issue['filename'], 'opensidewalks.zones.geojson')
         self.assertIsNotNone(mismatch_issue['feature_index'])
 
     def test_jsonschema_rs_pin_is_0_33_0(self):

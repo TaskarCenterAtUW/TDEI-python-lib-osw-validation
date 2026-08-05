@@ -39,7 +39,6 @@ result = validator.validate()
 print(result.is_valid)
 print(result.errors)  # returns up to the first 20 high-level errors by default
 print(result.issues)  # detailed per-feature issues, capped to first 20 by default
-print(result.warnings)  # non-blocking coordinate precision warning, or an empty string
 
 result = validator.validate(max_errors=10)
 print(result.is_valid)
@@ -58,7 +57,7 @@ from python_osw_validation import OSWValidation, ValidationConfig
 config = ValidationConfig(
     max_geometry_vertices=3000,
     coordinate_precision=8,
-    allow_zero_length_lines=True,
+    allow_zero_length_lines=False,
 )
 
 validator = OSWValidation(
@@ -71,8 +70,8 @@ result = validator.validate()
 | Setting | Default | Meaning |
 |---------|---------|---------|
 | `max_geometry_vertices` | `2000` | Maximum allowed vertices for edges, lines, polygons, and zones. Must be an integer greater than zero. |
-| `coordinate_precision` | `7` | Maximum coordinate decimal places before a non-blocking warning is reported. Must be a non-negative integer. |
-| `allow_zero_length_lines` | `False` | Rejects collapsed `LineString` geometries by default. Set to `True` to allow them in edges, lines, and external line data. |
+| `coordinate_precision` | `7` | Maximum coordinate decimal places allowed. Features exceeding it fail validation. Must be a non-negative integer. |
+| `allow_zero_length_lines` | `True` | Allows collapsed `LineString` geometries in edges, lines, and external line data. Set to `False` to reject them. |
 
 Allowing zero-length lines does not bypass `_u_id`/`_v_id` existence or exact
 node-coordinate checks. Zero-area polygons and zones, collapsed `MultiLineString`
@@ -82,8 +81,11 @@ geometries, and line geometries in point datasets remain invalid.
 
 - `errors`: high-level validation messages, capped by `max_errors` (default `20`).
 - `issues`: detailed per-feature validation issues, also capped by `max_errors`.
+- Coordinates carrying more than `coordinate_precision` decimal places fail validation before schema checks, one error per offending feature, and the message names the fix:
+  - `Feature 12 in 'osw.edges.geojson' contains coordinates with more than 7 decimal places. Reduce them to at most 7 decimal places; you can use the OSW data wizard tool to clean this up.`
+- `issues[].filename` is always the GeoJSON file the problem was found in, never an internal dataset key.
 - If actual null or numeric NaN values are found in `ext:*` extension properties, validation fails early before schema checks with actionable messages such as:
-  - `Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property.`
+  - `Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property. You can use the OSW data wizard tool to clean this up.`
 - For enum validation, long allowed-value lists are summarized as:
   - first 5 values joined by `|`
   - followed by `| and N more` when applicable.

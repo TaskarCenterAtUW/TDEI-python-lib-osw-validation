@@ -1,7 +1,7 @@
 import json
 import re
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import geopandas as gpd
 
@@ -28,25 +28,39 @@ def _geometry_exceeds_coordinate_precision(geometry: Any, max_decimal_places: in
     )
 
 
-def _geojson_file_has_excess_coordinate_precision(file_path: str, max_decimal_places: int = 7) -> bool:
-    """Return whether serialized GeoJSON coordinates exceed the decimal-place limit."""
+def _geojson_features_exceeding_coordinate_precision(
+    file_path: str, max_decimal_places: int = 7
+) -> List[Optional[int]]:
+    """Return feature indices whose coordinates exceed the decimal-place limit.
+
+    A single-`Feature` or bare-geometry document has no feature index, so it is
+    reported as `None` when it violates the limit.
+    """
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file, parse_float=Decimal)
 
     if not isinstance(data, dict):
-        return False
+        return []
     if data.get("type") == "FeatureCollection":
         features = data.get("features", [])
         if not isinstance(features, list):
-            return False
-        return any(
-            isinstance(feature, dict)
+            return []
+        return [
+            index
+            for index, feature in enumerate(features)
+            if isinstance(feature, dict)
             and _geometry_exceeds_coordinate_precision(feature.get("geometry"), max_decimal_places)
-            for feature in features
-        )
+        ]
     if data.get("type") == "Feature":
-        return _geometry_exceeds_coordinate_precision(data.get("geometry"), max_decimal_places)
-    return _geometry_exceeds_coordinate_precision(data, max_decimal_places)
+        geometry = data.get("geometry")
+    else:
+        geometry = data
+    return [None] if _geometry_exceeds_coordinate_precision(geometry, max_decimal_places) else []
+
+
+def _geojson_file_has_excess_coordinate_precision(file_path: str, max_decimal_places: int = 7) -> bool:
+    """Return whether serialized GeoJSON coordinates exceed the decimal-place limit."""
+    return bool(_geojson_features_exceeding_coordinate_precision(file_path, max_decimal_places))
 
 
 def _read_geojson_without_ext(file_path: str) -> gpd.GeoDataFrame:

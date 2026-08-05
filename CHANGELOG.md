@@ -1,5 +1,15 @@
 # Change log
 
+### 0.5.0 - 2026-08-05
+- Coordinates with more than `coordinate_precision` (default seven) decimal places are now validation errors instead of a warning. Each offending feature is reported individually with its filename and feature index, and validation stops before schema checks when any are found.
+- Removed `ValidationResult.warnings` and the `COORDINATE_PRECISION_WARNING` constant; the precision message is now part of `errors`/`issues`.
+- Changed `allow_zero_length_lines` to default to `True`. Set it to `False` to reject collapsed `LineString` geometries.
+- Confirmed there is no `_u_id != _v_id` constraint in the validator or the schemas: an edge may start and end at the same node. A self-loop with real length always passes; one collapsed to a point is governed solely by `allow_zero_length_lines`, and is reported as a geometry problem rather than a reference problem.
+- Made `issues[].filename` consistent across every error: it is now always the GeoJSON filename the problem was found in (`opensidewalks.edges.geojson`), never the internal dataset key (`edges`, `zones`) or the `All` placeholder. Error text that named a dataset key now names the file too, so `Duplicate _id's found in nodes` reads `Duplicate _id's found in nodes.geojson`.
+- Coordinate precision errors now tell users how to fix the data: `Reduce them to at most 7 decimal places; you can use the OSW data wizard tool to clean this up.`
+- Null/NaN errors in `ext:*` properties now point at the same remedy: `... provide a valid value or remove this property. You can use the OSW data wizard tool to clean this up.`
+- Added coverage confirming coordinate precision is judged on written decimal places and never on how close a value is to a shorter one. Anything with 8 or more decimal places is rejected (`48.9999999999`, `49.0000000001`, `49.00000000`); anything with 7 or fewer is accepted (`49`, `49.0`, `49.0000000`). Exponent notation is measured after normalization.
+
 ### 0.4.5 - 2026-07-21
 - Added immutable `ValidationConfig` support. Users can override the 2,000-vertex limit, seven-decimal coordinate warning threshold, and zero-length line handling per validator instance. Zero-length `LineString` geometries are rejected by default and can be allowed with `allow_zero_length_lines=True`.
 - Fixed [#3982](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/3982): edge `_u_id`/`_v_id` endpoints and zone `_w_id` vertices must now exactly match their referenced node coordinates; the previous `1e-7` tolerance was removed.
