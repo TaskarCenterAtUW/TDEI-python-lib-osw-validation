@@ -21,7 +21,7 @@ class TestValidationConfig(unittest.TestCase):
 
         self.assertEqual(config.max_geometry_vertices, 2000)
         self.assertEqual(config.coordinate_precision, 7)
-        self.assertFalse(config.allow_zero_length_lines)
+        self.assertTrue(config.allow_zero_length_lines)
 
     def test_invalid_configuration_values_are_rejected(self):
         cases = (
@@ -58,23 +58,42 @@ class TestValidationConfig(unittest.TestCase):
             config=ValidationConfig(coordinate_precision=5),
         )
         with patch(
-            "src.python_osw_validation._geojson_file_has_excess_coordinate_precision",
-            return_value=True,
+            "src.python_osw_validation._geojson_features_exceeding_coordinate_precision",
+            return_value=[3],
         ) as checker:
-            validator._check_coordinate_precision(["nodes.geojson"])
+            is_valid = validator._check_coordinate_precision(["nodes.geojson"])
 
         checker.assert_called_once_with("nodes.geojson", 5)
+        self.assertFalse(is_valid)
         self.assertEqual(
-            validator.warnings,
-            "Input dataset contains coordinates with more than 5 decimal places.",
+            validator.errors,
+            [
+                "Feature 3 in 'nodes.geojson' contains coordinates with more than 5 "
+                "decimal places. Reduce them to at most 5 decimal places; you can use "
+                "the OSW data wizard tool to clean this up."
+            ],
         )
 
-    def test_zero_length_line_is_rejected_by_default_and_can_be_allowed(self):
+    def test_precision_error_points_users_at_the_osw_data_wizard(self):
+        """Over-precise coordinates come with the remedy, not just the diagnosis."""
+        validator = OSWValidation(zipfile_path="dummy.zip")
+        with patch(
+            "src.python_osw_validation._geojson_features_exceeding_coordinate_precision",
+            return_value=[0],
+        ):
+            validator._check_coordinate_precision(["nodes.geojson"])
+
+        message = validator.errors[0]
+        self.assertIn("more than 7 decimal places", message)
+        self.assertIn("Reduce them to at most 7 decimal places", message)
+        self.assertIn("OSW data wizard", message)
+
+    def test_zero_length_line_is_allowed_by_default_and_can_be_rejected(self):
         line = self._gdf(LineString([(1, 1), (1, 1)]), "line-zero")
         default_validator = OSWValidation(zipfile_path="dummy.zip")
-        permissive_validator = OSWValidation(
+        strict_validator = OSWValidation(
             zipfile_path="dummy.zip",
-            config=ValidationConfig(allow_zero_length_lines=True),
+            config=ValidationConfig(allow_zero_length_lines=False),
         )
 
         default_indexes = default_validator._validate_collapsed_geometries(
@@ -82,17 +101,17 @@ class TestValidationConfig(unittest.TestCase):
             "lines",
             max_errors=20,
         )
-        permissive_indexes = permissive_validator._validate_collapsed_geometries(
+        strict_indexes = strict_validator._validate_collapsed_geometries(
             line,
             "lines",
             max_errors=20,
         )
 
         self.assertEqual(default_indexes, {0})
-        self.assertEqual(len(default_validator.errors), 1)
-        self.assertIn("zero-length geometry", default_validator.errors[0])
-        self.assertEqual(permissive_indexes, {0})
-        self.assertEqual(permissive_validator.errors, [])
+        self.assertEqual(default_validator.errors, [])
+        self.assertEqual(strict_indexes, {0})
+        self.assertEqual(len(strict_validator.errors), 1)
+        self.assertIn("zero-length geometry", strict_validator.errors[0])
 
     def test_zero_area_polygon_remains_invalid(self):
         polygon = self._gdf(

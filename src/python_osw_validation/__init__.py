@@ -21,7 +21,7 @@ from .helpers import (
     _feature_index_from_error,
     _pretty_message,
     _read_geojson_without_ext,
-    _geojson_file_has_excess_coordinate_precision,
+    _geojson_features_exceeding_coordinate_precision,
 )
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema')
@@ -34,9 +34,13 @@ DEFAULT_DATASET_SCHEMAS = {
     "zones": os.path.join(SCHEMA_PATH, 'opensidewalks.zones.schema-0.3.json'),
 }
 
-COORDINATE_PRECISION_WARNING = (
-    "Input dataset contains coordinates with more than "
-    f"{DEFAULT_COORDINATE_PRECISION} decimal places."
+COORDINATE_PRECISION_REMEDY = (
+    "Reduce them to at most {limit} decimal places; "
+    "you can use the OSW data wizard tool to clean this up."
+)
+NULLISH_VALUE_REMEDY = (
+    "Null/NaN placeholders are not allowed; provide a valid value or remove this "
+    "property. You can use the OSW data wizard tool to clean this up."
 )
 MAX_GEOMETRY_VERTICES = DEFAULT_MAX_GEOMETRY_VERTICES
 VERTEX_LIMIT_DATASETS = frozenset({"edges", "lines", "polygons", "zones"})
@@ -48,18 +52,16 @@ class ValidationResult:
     * `errors`: high-level, human-readable strings (legacy behavior).
     * `issues`: per-feature schema problems (former `fixme`), each item:
         { 'filename': str, 'feature_index': Optional[int], 'error_message': List[str] }
-    * `warnings`: non-blocking validation warning string.
     """
 
     def __init__(self, is_valid: bool, errors: Optional[List[str]] = None,
-                 issues: Optional[List[Dict[str, Any]]] = None, warnings: str = ""):
+                 issues: Optional[List[Dict[str, Any]]] = None):
         self.is_valid = is_valid
         if len(errors) == 0:
             self.errors = None
         else:
             self.errors = errors
         self.issues = issues
-        self.warnings = warnings
 
 
 class OSWValidation:
@@ -85,7 +87,8 @@ class OSWValidation:
         self.errors: List[str] = []
         # per-feature schema issues (formerly `fixme`)
         self.issues: List[Dict[str, Any]] = []
-        self.warnings = ""
+        # dataset key ('edges') -> the GeoJSON filename it was read from
+        self.dataset_filenames: Dict[str, str] = {}
         if config is not None and not isinstance(config, ValidationConfig):
             raise TypeError("config must be a ValidationConfig instance.")
         self.config = config or ValidationConfig()
@@ -115,30 +118,63 @@ class OSWValidation:
             'error_message': message,
         })
 
-    def _check_coordinate_precision(self, file_paths) -> None:
-        """Set one aggregate warning without affecting validation state."""
+    def _dataset_filename(self, dataset_name: Optional[str]) -> Optional[str]:
+        """Resolve a dataset key to the file it was read from.
+
+        Errors always name a real file ('opensidewalks.edges.geojson'), never the
+        internal dataset key ('edges'). Names that are already filenames, such as
+        external extensions, pass through unchanged.
+        """
+        if dataset_name is None:
+            return None
+        return self.dataset_filenames.get(dataset_name, dataset_name)
+
+    def _check_coordinate_precision(self, file_paths, max_errors: int = 20) -> bool:
+        """Log an error per feature whose coordinates exceed the precision limit.
+
+        Returns True when every file is within the limit.
+        """
+        is_valid = True
         for file_path in file_paths:
+            filename = os.path.basename(str(file_path))
             try:
-                if _geojson_file_has_excess_coordinate_precision(
+                offending = _geojson_features_exceeding_coordinate_precision(
                     str(file_path),
                     self.config.coordinate_precision,
-                ):
-                    self.warnings = (
-                        "Input dataset contains coordinates with more than "
-                        f"{self.config.coordinate_precision} decimal places."
-                    )
-                    return
+                )
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
                 # Existing parsing and schema validation own all functional errors.
                 continue
+            for feature_index in offending:
+                is_valid = False
+                location = (
+                    f"Feature {feature_index} in '{filename}'"
+                    if feature_index is not None
+                    else f"'{filename}'"
+                )
+                self.log_errors(
+                    message=(
+                        f"{location} contains coordinates with more than "
+                        f"{self.config.coordinate_precision} decimal places. "
+                        + COORDINATE_PRECISION_REMEDY.format(
+                            limit=self.config.coordinate_precision
+                        )
+                    ),
+                    filename=filename,
+                    feature_index=feature_index,
+                )
+                if len(self.errors) >= max_errors:
+                    return False
+        return is_valid
 
     # add this small helper inside OSWValidation (near other helpers)
     def _get_colset(self, gdf: Optional[gpd.GeoDataFrame], col: str, filekey: str) -> set:
         """Return set of a column if present; else log and return empty set."""
         if gdf is None:
             return set()
+        filename = self._dataset_filename(filekey)
         if col not in gdf.columns:
-            self.log_errors(f"Missing required column '{col}' in {filekey}.", filekey, None)
+            self.log_errors(f"Missing required column '{col}' in {filename}.", filename, None)
             return set()
         try:
             return set(gdf[col].dropna())
@@ -147,7 +183,7 @@ class OSWValidation:
             try:
                 return set(map(str, gdf[col].dropna()))
             except Exception:
-                self.log_errors(f"Could not create set for column '{col}' in {filekey}.", filekey, None)
+                self.log_errors(f"Could not create set for column '{col}' in {filename}.", filename, None)
                 return set()
 
     # ----------------------------
@@ -217,7 +253,7 @@ class OSWValidation:
                                 f"start coordinate {edge_start} does not match "
                                 f"node id '{u_id}' coordinate {node_coord} (_u_id mismatch)."
                             ),
-                            filename='edges',
+                            filename=self._dataset_filename('edges'),
                             feature_index=feat_idx,
                         )
 
@@ -239,7 +275,7 @@ class OSWValidation:
                                 f"end coordinate {edge_end} does not match "
                                 f"node id '{v_id}' coordinate {node_coord} (_v_id mismatch)."
                             ),
-                            filename='edges',
+                            filename=self._dataset_filename('edges'),
                             feature_index=feat_idx,
                         )
 
@@ -294,7 +330,7 @@ class OSWValidation:
                             f"node id '{w_id}' coordinate {node_coord} is not a vertex "
                             f"of the zone polygon geometry (_w_id coordinate mismatch)."
                         ),
-                        filename='zones',
+                        filename=self._dataset_filename('zones'),
                         feature_index=feat_idx,
                     )
 
@@ -340,12 +376,13 @@ class OSWValidation:
             feature_id = row.get('_id', feature_index)
             if self._is_nullish_value(feature_id):
                 feature_id = feature_index
+            filename = self._dataset_filename(dataset_name)
             self.log_errors(
                 message=(
-                    f"Feature '{feature_id}' in '{dataset_name}' contains {vertex_count} geometry vertices. "
+                    f"Feature '{feature_id}' in '{filename}' contains {vertex_count} geometry vertices. "
                     f"Maximum allowed is {self.config.max_geometry_vertices}."
                 ),
-                filename=dataset_name,
+                filename=filename,
                 feature_index=feature_index,
             )
 
@@ -406,12 +443,13 @@ class OSWValidation:
             feature_id = row.get('_id', feature_index)
             if self._is_nullish_value(feature_id):
                 feature_id = feature_index
+            filename = self._dataset_filename(dataset_name)
             self.log_errors(
                 message=(
-                    f"Feature '{feature_id}' in '{dataset_name}' has {geometry_problem} geometry "
+                    f"Feature '{feature_id}' in '{filename}' has {geometry_problem} geometry "
                     "because all coordinates are identical."
                 ),
-                filename=dataset_name,
+                filename=filename,
                 feature_index=feature_index,
             )
 
@@ -548,7 +586,7 @@ class OSWValidation:
             final_errors = self.errors if errors is None else errors
             final_errors = (final_errors or [])[:max_errors]
             final_issues = (self.issues or [])[:max_errors]
-            return ValidationResult(is_valid, final_errors, final_issues, self.warnings)
+            return ValidationResult(is_valid, final_errors, final_issues)
 
         zip_handler = None
         OSW_DATASET: Dict[str, Optional[gpd.GeoDataFrame]] = {}
@@ -577,10 +615,21 @@ class OSWValidation:
                 )
                 return _finalize(False)
 
-            self._check_coordinate_precision(
+            # Remember which file each dataset key came from, so every error can
+            # name a real file instead of the internal key.
+            self.dataset_filenames = {}
+            for file in getattr(validator, 'files', []) or []:
+                basename = os.path.basename(str(file))
+                dataset_key = dataset_key_for_filename(basename)
+                if dataset_key:
+                    self.dataset_filenames[dataset_key] = basename
+
+            if not self._check_coordinate_precision(
                 list(getattr(validator, 'files', []) or [])
-                + list(getattr(validator, 'externalExtensions', []) or [])
-            )
+                + list(getattr(validator, 'externalExtensions', []) or []),
+                max_errors=max_errors,
+            ):
+                return _finalize(False)
 
             # Per-file schema validation → populate self.issues (fixme-like)
             for file in validator.files:
@@ -616,14 +665,15 @@ class OSWValidation:
                 if not is_valid:
                     total_duplicates = len(duplicates)
                     displayed = ', '.join(map(str, duplicates[:max_errors]))
+                    filename = self._dataset_filename(osw_file)
                     if total_duplicates > max_errors:
-                        message = (f"Duplicate _id's found in {osw_file}: showing first {max_errors} "
+                        message = (f"Duplicate _id's found in {filename}: showing first {max_errors} "
                                    f"of {total_duplicates} duplicates: {displayed}")
                     else:
-                        message = f"Duplicate _id's found in {osw_file}: {displayed}"
+                        message = f"Duplicate _id's found in {filename}: {displayed}"
                     self.log_errors(
                         message=message,
-                        filename=osw_file,
+                        filename=filename,
                         feature_index=None
                     )
 
@@ -646,7 +696,12 @@ class OSWValidation:
                         for item in (sub if isinstance(sub, (list, tuple)) else [sub])
                     )
                 else:
-                    self.log_errors("Missing required column '_w_id' in zones.", 'zones', None)
+                    zones_filename = self._dataset_filename('zones')
+                    self.log_errors(
+                        f"Missing required column '_w_id' in {zones_filename}.",
+                        zones_filename,
+                        None,
+                    )
                     node_ids_zones_w = set()
             else:
                 node_ids_zones_w = set()
@@ -663,7 +718,7 @@ class OSWValidation:
                         message=(f"All _u_id's in edges should be part of _id's mentioned in nodes. "
                                  f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _u_id's: {displayed_unmatched}"),
-                        filename='All',
+                        filename=self._dataset_filename('edges'),
                         feature_index=None
                     )
 
@@ -678,7 +733,7 @@ class OSWValidation:
                         message=(f"All _v_id's in edges should be part of _id's mentioned in nodes. "
                                  f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _v_id's: {displayed_unmatched}"),
-                        filename='All',
+                        filename=self._dataset_filename('edges'),
                         feature_index=None
                     )
 
@@ -693,7 +748,7 @@ class OSWValidation:
                         message=(f"All _w_id's in zones should be part of _id's mentioned in nodes. "
                                  f"Showing {max_errors if num_unmatched > max_errors else 'all'} out of {num_unmatched} "
                                  f"unmatched _w_id's: {displayed_unmatched}"),
-                        filename='All',
+                        filename=self._dataset_filename('zones'),
                         feature_index=None
                     )
 
@@ -731,8 +786,9 @@ class OSWValidation:
                     displayed_invalid = ', '.join(map(str, invalid_ids[:limit]))
                     self.log_errors(
                         message=(f"Showing {max_errors if num_invalid > max_errors else 'all'} out of {num_invalid} "
-                                 f"invalid {osw_file} geometries, id's of invalid geometries: {displayed_invalid}"),
-                        filename='All',
+                                 f"invalid geometries in {self._dataset_filename(osw_file)}, "
+                                 f"id's of invalid geometries: {displayed_invalid}"),
+                        filename=self._dataset_filename(osw_file),
                         feature_index=None
                     )
 
@@ -886,10 +942,7 @@ class OSWValidation:
                     return False
                 found_nullish = True
                 rendered = f'"{bad_value}"' if isinstance(bad_value, str) else str(bad_value)
-                msg = (
-                    f"Invalid value at '{path}': {rendered}. "
-                    f"Null/NaN placeholders are not allowed; provide a valid value or remove this property."
-                )
+                msg = f"Invalid value at '{path}': {rendered}. {NULLISH_VALUE_REMEDY}"
                 self.errors.append(f"Validation error: {msg}")
                 self.issues.append({
                     "filename": filename,
