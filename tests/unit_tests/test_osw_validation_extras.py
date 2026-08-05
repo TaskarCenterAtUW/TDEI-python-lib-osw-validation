@@ -19,7 +19,7 @@ _PATCH_EV = f"{_PATCH_PREFIX}.ExtractedDataValidator"
 _PATCH_READ_FILE = f"{_PATCH_PREFIX}._read_geojson_without_ext"
 _PATCH_VALIDATE = f"{_PATCH_PREFIX}.OSWValidation.validate_osw_errors"
 _PATCH_DATASET_FILES = f"{_PATCH_PREFIX}.OSW_DATASET_FILES"
-_PATCH_PRECISION = f"{_PATCH_PREFIX}._geojson_file_has_excess_coordinate_precision"
+_PATCH_PRECISION = f"{_PATCH_PREFIX}._geojson_features_exceeding_coordinate_precision"
 
 # A tiny canonical mapping that matches our mocked basenames
 _CANON_DATASET_FILES = {
@@ -75,13 +75,41 @@ class TestOSWValidationExtras(unittest.TestCase):
 
     # ---------------- tests ----------------
 
-    def test_coordinate_precision_warning_does_not_invalidate_dataset(self):
+    def test_excess_coordinate_precision_invalidates_dataset(self):
         nodes = self._gdf_nodes(["n1"])
         with patch(_PATCH_ZIP) as PZip, \
              patch(_PATCH_EV) as PVal, \
              patch(_PATCH_VALIDATE, return_value=True), \
              patch(_PATCH_READ_FILE, return_value=nodes), \
-             patch(_PATCH_PRECISION, return_value=True), \
+             patch(_PATCH_PRECISION, return_value=[0]), \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z = MagicMock()
+            z.extract_zip.return_value = "/tmp/extracted"
+            z.remove_extracted_files.return_value = None
+            PZip.return_value = z
+            PVal.return_value = self._fake_validator(["/tmp/nodes.geojson"])
+
+            res = OSWValidation(zipfile_path="dummy.zip").validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertEqual(
+            res.errors,
+            [
+                "Feature 0 in 'nodes.geojson' contains coordinates with more than 7 "
+                "decimal places. Reduce them to at most 7 decimal places; you can use "
+                "the OSW data wizard tool to clean this up."
+            ],
+        )
+        self.assertEqual(res.issues[0]['filename'], 'nodes.geojson')
+        self.assertEqual(res.issues[0]['feature_index'], 0)
+
+    def test_no_coordinate_precision_error_when_within_limit(self):
+        nodes = self._gdf_nodes(["n1"])
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE, return_value=nodes), \
+             patch(_PATCH_PRECISION, return_value=[]), \
              patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
             z = MagicMock()
             z.extract_zip.return_value = "/tmp/extracted"
@@ -93,35 +121,14 @@ class TestOSWValidationExtras(unittest.TestCase):
 
         self.assertTrue(res.is_valid)
         self.assertIsNone(res.errors)
-        self.assertEqual(res.issues, [])
-        self.assertEqual(res.warnings, osw_mod.COORDINATE_PRECISION_WARNING)
 
-    def test_coordinate_precision_warning_is_empty_when_not_detected(self):
-        nodes = self._gdf_nodes(["n1"])
-        with patch(_PATCH_ZIP) as PZip, \
-             patch(_PATCH_EV) as PVal, \
-             patch(_PATCH_VALIDATE, return_value=True), \
-             patch(_PATCH_READ_FILE, return_value=nodes), \
-             patch(_PATCH_PRECISION, return_value=False), \
-             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
-            z = MagicMock()
-            z.extract_zip.return_value = "/tmp/extracted"
-            z.remove_extracted_files.return_value = None
-            PZip.return_value = z
-            PVal.return_value = self._fake_validator(["/tmp/nodes.geojson"])
-
-            res = OSWValidation(zipfile_path="dummy.zip").validate()
-
-        self.assertTrue(res.is_valid)
-        self.assertEqual(res.warnings, "")
-
-    def test_coordinate_precision_warning_does_not_replace_validation_errors(self):
+    def test_coordinate_precision_error_stops_before_schema_validation(self):
         nodes = self._gdf_nodes(["duplicate", "duplicate"])
         with patch(_PATCH_ZIP) as PZip, \
              patch(_PATCH_EV) as PVal, \
-             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_VALIDATE, return_value=True) as schema_validate, \
              patch(_PATCH_READ_FILE, return_value=nodes), \
-             patch(_PATCH_PRECISION, return_value=True), \
+             patch(_PATCH_PRECISION, return_value=[1]), \
              patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
             z = MagicMock()
             z.extract_zip.return_value = "/tmp/extracted"
@@ -132,8 +139,8 @@ class TestOSWValidationExtras(unittest.TestCase):
             res = OSWValidation(zipfile_path="dummy.zip").validate()
 
         self.assertFalse(res.is_valid)
-        self.assertTrue(any("Duplicate _id's" in error for error in (res.errors or [])))
-        self.assertEqual(res.warnings, osw_mod.COORDINATE_PRECISION_WARNING)
+        self.assertTrue(all("decimal places" in error for error in (res.errors or [])))
+        schema_validate.assert_not_called()
 
     def test_structure_error_uses_uploaded_filename(self):
         """Validator errors should reference the uploaded ZIP, not the temp extraction dir."""
@@ -185,12 +192,42 @@ class TestOSWValidationExtras(unittest.TestCase):
         self.assertEqual(len(validator.issues), 2)
         self.assertEqual(
             validator.issues[0]["error_message"],
-            ["Invalid value at 'ext:missing': None. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+            [
+                "Invalid value at 'ext:missing': None. Null/NaN placeholders are not allowed; "
+                "provide a valid value or remove this property. You can use the OSW "
+                "data wizard tool to clean this up."
+            ],
         )
         self.assertEqual(
             validator.issues[1]["error_message"],
-            ["Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; provide a valid value or remove this property."],
+            [
+                "Invalid value at 'ext:metadata.score': nan. Null/NaN placeholders are not allowed; "
+                "provide a valid value or remove this property. You can use the OSW "
+                "data wizard tool to clean this up."
+            ],
         )
+
+    def test_nullish_error_points_users_at_the_osw_data_wizard(self):
+        """Null/NaN errors come with the remedy, not just the diagnosis."""
+        validator = OSWValidation(zipfile_path="dummy.zip")
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"_id": "e1", "ext:missing": None},
+                    "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+                }
+            ],
+        }
+
+        with patch.object(validator, "load_osw_file", return_value=geojson_data), \
+             patch.object(validator, "pick_schema_for_file"):
+            validator.validate_osw_errors("/tmp/edges.geojson", max_errors=20)
+
+        message = validator.errors[0]
+        self.assertIn("Null/NaN placeholders are not allowed", message)
+        self.assertIn("OSW data wizard", message)
 
     def test_non_extension_nullish_values_are_not_upfront_nullish_values(self):
         validator = OSWValidation(zipfile_path="dummy.zip")
@@ -637,7 +674,7 @@ class TestOSWValidationExtras(unittest.TestCase):
             res = OSWValidation(zipfile_path="dummy.zip").validate()
             self.assertFalse(res.is_valid)
             msg = next((e for e in (res.errors or []) if "Duplicate _id's found in nodes" in e), None)
-            self.assertEqual(msg, "Duplicate _id's found in nodes: 2")
+            self.assertEqual(msg, "Duplicate _id's found in nodes.geojson: 2")
 
     def test_duplicate_ids_detection_is_limited_to_20(self):
         """Duplicate messages cap the number of displayed IDs."""
@@ -1099,7 +1136,7 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             res = OSWValidation(zipfile_path="dummy.zip").validate()
             self.assertFalse(res.is_valid)
             # Expect the invalid geometry message for 'edges'
-            msg = next((e for e in (res.errors or []) if "invalid edges geometries" in e), None)
+            msg = next((e for e in (res.errors or []) if "invalid geometries in edges.geojson" in e), None)
             self.assertIsNotNone(msg, f"No invalid-geometry message found. Errors: {res.errors}")
             self.assertIn("Showing all out of 3", msg)
 
@@ -1123,7 +1160,7 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
 
             res = OSWValidation(zipfile_path="dummy.zip").validate()
             self.assertFalse(res.is_valid, f"Expected invalid; errors={res.errors}")
-            msg = next((e for e in (res.errors or []) if "invalid edges geometries" in e), None)
+            msg = next((e for e in (res.errors or []) if "invalid geometries in edges.geojson" in e), None)
             self.assertIsNotNone(msg, f"No invalid-geometry message found. Errors: {res.errors}")
             self.assertIn("Showing 20 out of 25", msg)
 
@@ -1169,18 +1206,19 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             ).validate()
 
         expected_message = (
-            "Feature 'edge-zero' in 'edges' has zero-length geometry because all coordinates are identical."
+            "Feature 'edge-zero' in 'edges.geojson' has zero-length geometry "
+            "because all coordinates are identical."
         )
         self.assertEqual(result.errors, [expected_message])
         self.assertEqual(
             result.issues,
             [{
-                "filename": "edges",
+                "filename": "edges.geojson",
                 "feature_index": 17,
                 "error_message": expected_message,
             }],
         )
-        self.assertFalse(any("invalid edges geometries" in error for error in result.errors))
+        self.assertFalse(any("invalid geometries in edges.geojson" in error for error in result.errors))
 
     def test_zero_length_edge_is_valid_when_enabled(self):
         coordinate = (-122.335167, 47.608013)
@@ -1294,7 +1332,7 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
         self.assertEqual(indexes, set())
         self.assertEqual(validator.errors, [])
 
-    def test_collapsed_external_line_is_rejected_by_default_without_generic_duplicate(self):
+    def test_collapsed_external_line_is_rejected_when_disallowed_without_generic_duplicate(self):
         extension = gpd.GeoDataFrame(
             {
                 "_id": ["external-line"],
@@ -1318,7 +1356,10 @@ class TestOSWValidationInvalidGeometryLogging(unittest.TestCase):
             val.is_valid.return_value = True
             PVal.return_value = val
 
-            result = OSWValidation(zipfile_path="dummy.zip").validate()
+            result = OSWValidation(
+                zipfile_path="dummy.zip",
+                config=ValidationConfig(allow_zero_length_lines=False),
+            ).validate()
 
         expected_message = (
             "Feature 'external-line' in 'custom.geojson' has zero-length geometry "
@@ -1599,7 +1640,7 @@ class TestGeometryMappingViaValidate(unittest.TestCase):
         res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
         issue = next((i for i in (res.issues or []) if "_u_id mismatch" in i.get("error_message", "")), None)
         self.assertIsNotNone(issue)
-        self.assertEqual(issue["filename"], "edges")
+        self.assertEqual(issue["filename"], "edges.geojson")
         self.assertIsNotNone(issue["feature_index"])
         self.assertIn("edge-xyz", issue["error_message"])
 
@@ -1812,6 +1853,162 @@ class TestGeometryMappingViaValidate(unittest.TestCase):
 
         res = self._run(["/tmp/nodes.geojson", "/tmp/zones.geojson"], rf)
         self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    # ---- self-referencing edges ----
+
+    def test_edge_may_start_and_end_at_the_same_node(self):
+        """`_u_id` == `_v_id` is legal; there is no inequality check."""
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0)])
+        edges = self._edges_gdf(
+            [("e1", "n1", "n1", [(0.0, 0.0), (1.0, 1.0), (0.0, 0.0)])]
+        )
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    def test_self_referencing_zero_length_edge_is_allowed_by_default(self):
+        """A self-loop collapsed to one point rides on allow_zero_length_lines."""
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0)])
+        edges = self._edges_gdf([("e1", "n1", "n1", [(0.0, 0.0), (0.0, 0.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+        self.assertTrue(res.is_valid, f"Expected valid; errors={res.errors}")
+
+    def test_self_referencing_edge_is_only_rejected_for_its_geometry(self):
+        """Opting into strict mode complains about the geometry, not about u == v."""
+        nodes = self._nodes_gdf([("n1", 0.0, 0.0)])
+        edges = self._edges_gdf([("e1", "n1", "n1", [(0.0, 0.0), (0.0, 0.0)])])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+        with patch(_PATCH_ZIP) as PZip, \
+             patch(_PATCH_EV) as PVal, \
+             patch(_PATCH_VALIDATE, return_value=True), \
+             patch(_PATCH_READ_FILE) as PRead, \
+             patch(_PATCH_DATASET_FILES, _CANON_DATASET_FILES):
+            z, val, read_fn = self._patch_env(
+                ["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf
+            )
+            PZip.return_value = z
+            PVal.return_value = val
+            PRead.side_effect = read_fn
+            res = OSWValidation(
+                zipfile_path="dummy.zip",
+                config=ValidationConfig(allow_zero_length_lines=False),
+            ).validate()
+
+        self.assertFalse(res.is_valid)
+        self.assertEqual(len(res.errors), 1)
+        self.assertIn("zero-length geometry", res.errors[0])
+        self.assertNotIn("_u_id", res.errors[0])
+        self.assertNotIn("_v_id", res.errors[0])
+
+    # ---- no tolerance at any magnitude ----
+
+    DEVIATIONS = (
+        ("one 7-decimal step", 1e-7),
+        ("below the old tolerance", 5e-8),
+        ("a billionth", 1e-9),
+        ("a trillionth", 1e-12),
+    )
+
+    def test_u_id_rejects_every_deviation_magnitude(self):
+        """No deviation is small enough to be forgiven on an edge start."""
+        for label, delta in self.DEVIATIONS:
+            with self.subTest(deviation=label):
+                nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+                edges = self._edges_gdf(
+                    [("e1", "n1", "n2", [(delta, 0.0), (1.0, 1.0)])]
+                )
+
+                def rf(path):
+                    b = os.path.basename(path)
+                    return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+                res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+                self.assertFalse(res.is_valid)
+                self.assertTrue(any("_u_id mismatch" in e for e in (res.errors or [])))
+
+    def test_v_id_rejects_every_deviation_magnitude(self):
+        """No deviation is small enough to be forgiven on an edge end."""
+        for label, delta in self.DEVIATIONS:
+            with self.subTest(deviation=label):
+                nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+                edges = self._edges_gdf(
+                    [("e1", "n1", "n2", [(0.0, 0.0), (1.0, 1.0 + delta)])]
+                )
+
+                def rf(path):
+                    b = os.path.basename(path)
+                    return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+                res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+                self.assertFalse(res.is_valid)
+                self.assertTrue(any("_v_id mismatch" in e for e in (res.errors or [])))
+
+    def test_w_id_rejects_every_deviation_magnitude(self):
+        """No deviation is small enough to be forgiven on a zone vertex."""
+        for label, delta in self.DEVIATIONS:
+            with self.subTest(deviation=label):
+                nodes = self._nodes_gdf([("w1", 0.0, 0.0)])
+                ring = [(delta, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+                zones = self._zones_gdf([("z1", ["w1"], ring)])
+
+                def rf(path):
+                    b = os.path.basename(path)
+                    return nodes if "nodes" in b else zones if "zones" in b else gpd.GeoDataFrame()
+
+                res = self._run(["/tmp/nodes.geojson", "/tmp/zones.geojson"], rf)
+                self.assertFalse(res.is_valid)
+                self.assertTrue(
+                    any("_w_id coordinate mismatch" in e for e in (res.errors or []))
+                )
+
+    def test_deviation_on_one_axis_is_enough_to_fail(self):
+        """Matching longitude does not excuse a latitude that is off, or vice versa."""
+        cases = (
+            ("longitude only", (1e-7, 0.0)),
+            ("latitude only", (0.0, 1e-7)),
+        )
+        for label, (delta_lon, delta_lat) in cases:
+            with self.subTest(axis=label):
+                nodes = self._nodes_gdf([("n1", 0.0, 0.0), ("n2", 1.0, 1.0)])
+                edges = self._edges_gdf(
+                    [("e1", "n1", "n2", [(delta_lon, delta_lat), (1.0, 1.0)])]
+                )
+
+                def rf(path):
+                    b = os.path.basename(path)
+                    return nodes if "nodes" in b else edges if "edges" in b else gpd.GeoDataFrame()
+
+                res = self._run(["/tmp/nodes.geojson", "/tmp/edges.geojson"], rf)
+                self.assertFalse(res.is_valid)
+                self.assertTrue(any("_u_id mismatch" in e for e in (res.errors or [])))
+
+    def test_only_the_off_w_id_is_reported(self):
+        """A zone with one exact and one deviating _w_id reports just the deviation."""
+        nodes = self._nodes_gdf([("w1", 0.0, 0.0), ("w2", 1.0, 0.0)])
+        ring = [(0.0, 0.0), (1.0 + 1e-7, 0.0), (1.0, 1.0), (0.0, 1.0)]
+        zones = self._zones_gdf([("z1", ["w1", "w2"], ring)])
+
+        def rf(path):
+            b = os.path.basename(path)
+            return nodes if "nodes" in b else zones if "zones" in b else gpd.GeoDataFrame()
+
+        res = self._run(["/tmp/nodes.geojson", "/tmp/zones.geojson"], rf)
+        mismatches = [e for e in (res.errors or []) if "_w_id coordinate mismatch" in e]
+        self.assertEqual(len(mismatches), 1)
+        self.assertIn("'w2'", mismatches[0])
 
 
 if __name__ == "__main__":
