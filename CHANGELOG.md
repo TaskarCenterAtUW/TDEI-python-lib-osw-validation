@@ -1,5 +1,8 @@
 # Change log
 
+### 0.5.1 - 2026-11-04
+- Removed `mixed` from the allowed `leaf_type` values in the OSW 0.3 points schema. The accepted values are now `broadleaved`, `leafless`, and `needleleaved`.
+
 ### 0.5.0 - 2026-08-05
 - Coordinates with more than `coordinate_precision` (default seven) decimal places are now validation errors instead of a warning. Each offending feature is reported individually with its filename and feature index, and validation stops before schema checks when any are found.
 - Removed `ValidationResult.warnings` and the `COORDINATE_PRECISION_WARNING` constant; the precision message is now part of `errors`/`issues`.
