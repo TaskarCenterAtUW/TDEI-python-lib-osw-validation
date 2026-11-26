@@ -1,5 +1,10 @@
 # Change log
 
+### 0.5.2 - 2026-11-26
+- Fixed [#4737](https://dev.azure.com/TDEI-UW/TDEI/_workitems/edit/4737): dropped support for the deprecated `.OSW.geojson` filename convention. Only `<dataset>.geojson` and `*.<dataset>.geojson` are accepted now, so files such as `b.graph.nodes.OSW.geojson` and `b.graph.edges.OSW.geojson` are reported as unsupported `.geojson` files instead of being validated.
+- Legacy names are also no longer used to pick a dataset schema, so a file named `nodes.OSW.geojson` is not validated against the nodes schema.
+- Updated the unsupported-filename error message to list only the two supported forms, renamed the legacy-named test fixtures to the supported convention, and added coverage asserting legacy names are rejected.
+
 ### 0.5.1 - 2026-11-04
 - Removed `mixed` from the allowed `leaf_type` values in the OSW 0.3 points schema. The accepted values are now `broadleaved`, `leafless`, and `needleleaved`.
 

@@ -106,12 +106,10 @@ validator = OSWValidation(
 
 ## Supported filenames
 
-The validator accepts four filename formats for each dataset type:
+The validator accepts two filename formats for each dataset type:
 
 - `<dataset>.geojson`
 - `*.<dataset>.geojson`
-- `<dataset>.OSW.geojson`
-- `*.<dataset>.OSW.geojson`
 
 Where `<dataset>` is one of:
 
@@ -126,12 +124,15 @@ Examples:
 
 - `nodes.geojson` is valid
 - `gs_metaline_falls_uga.nodes.geojson` is valid
-- `nodes.OSW.geojson` is valid
 - `gs_yarrow_point.edges.geojson` is valid
-- `wa.microsoft.graph.edges.OSW.geojson` is valid
+- `wa.microsoft.graph.edges.geojson` is valid
 - `roadEdges.geojson` is invalid
 - `roadedges.geojson` is invalid
 - `River._edges_.geojson` is invalid
+
+The deprecated `.OSW.geojson` forms are no longer supported. Names such as
+`nodes.OSW.geojson` and `b.graph.edges.OSW.geojson` are rejected as unsupported
+files; rename them to `nodes.geojson` and `b.graph.edges.geojson`.
 
 If a dataset uses canonical OSW 0.3 names that start with `opensidewalks.`, then only these exact names are allowed:
 

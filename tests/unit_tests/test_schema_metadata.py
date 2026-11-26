@@ -66,14 +66,14 @@ class TestSchemaRequirementDuringValidation(unittest.TestCase):
     def test_point_geojson_requires_schema(self):
         result = self._validate_missing_schema(
             MINIMAL_ZIP,
-            ["minimal/wa.microsoft.graph.nodes.OSW.geojson"],
+            ["minimal/wa.microsoft.graph.nodes.geojson"],
         )
         self._assert_missing_schema_failure(result)
 
     def test_linestring_geojson_requires_schema(self):
         result = self._validate_missing_schema(
             MINIMAL_ZIP,
-            ["minimal/wa.microsoft.graph.edges.OSW.geojson"],
+            ["minimal/wa.microsoft.graph.edges.geojson"],
         )
         self._assert_missing_schema_failure(result)
 

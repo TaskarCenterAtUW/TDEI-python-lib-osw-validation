@@ -1015,8 +1015,6 @@ class TestOSWValidationInternals(unittest.TestCase):
         v = OSWValidation(zipfile_path="dummy.zip")
         self.assertEqual(v.pick_schema_for_file("/tmp/nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
-        self.assertEqual(v.pick_schema_for_file("/tmp/nodes.OSW.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
-        self.assertEqual(v.pick_schema_for_file("/tmp/my.nodes.OSW.geojson", {"features": []}), v.dataset_schema_paths["nodes"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.points.geojson", {"features": []}), v.dataset_schema_paths["points"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.edges.geojson", {"features": []}), v.dataset_schema_paths["edges"])
         self.assertEqual(v.pick_schema_for_file("/tmp/my.lines.geojson", {"features": []}), v.dataset_schema_paths["lines"])
@@ -1026,6 +1024,18 @@ class TestOSWValidationInternals(unittest.TestCase):
             v.pick_schema_for_file("/tmp/geometry_only.geojson", {"features": [{"geometry": {"type": "Point"}}]}),
             v.line_schema_path,
         )
+
+    def test_pick_schema_ignores_legacy_osw_filenames(self):
+        v = OSWValidation(zipfile_path="dummy.zip")
+        for dataset_key in v.dataset_schema_paths:
+            self.assertEqual(
+                v.pick_schema_for_file(f"/tmp/{dataset_key}.OSW.geojson", {"features": []}),
+                v.line_schema_path,
+            )
+            self.assertEqual(
+                v.pick_schema_for_file(f"/tmp/b.graph.{dataset_key}.OSW.geojson", {"features": []}),
+                v.line_schema_path,
+            )
 
     def test_pick_schema_ignores_prefix_substrings(self):
         v = OSWValidation(zipfile_path="dummy.zip")
@@ -1038,7 +1048,7 @@ class TestOSWValidationInternals(unittest.TestCase):
             v.dataset_schema_paths["edges"],
         )
         self.assertEqual(
-            v.pick_schema_for_file("/tmp/wa.microsoft.graph.nodes.OSW.geojson", {"features": []}),
+            v.pick_schema_for_file("/tmp/wa.microsoft.graph.nodes.geojson", {"features": []}),
             v.dataset_schema_paths["nodes"],
         )
         self.assertEqual(

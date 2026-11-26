@@ -6,6 +6,11 @@ from unittest.mock import patch
 from src.python_osw_validation.extracted_data_validator import ExtractedDataValidator, dataset_key_for_filename
 from src.python_osw_validation.extracted_data_validator import ALLOWED_OSW_03_FILENAMES
 
+ALLOWED_NAMES_MESSAGE = (
+    'Allowed file names are {edges, nodes, points, lines, zones, polygons}.geojson or '
+    '*.{edges, nodes, points, lines, zones, polygons}.geojson'
+)
+
 
 class TestExtractedDataValidator(unittest.TestCase):
     def setUp(self):
@@ -69,9 +74,9 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertTrue(validator.is_valid())
         self.assertEqual(len(validator.files), 1)
 
-    def test_valid_legacy_osw_suffix_files(self):
+    def test_valid_dotted_prefix_files(self):
         validator = ExtractedDataValidator(self.test_dir)
-        self.create_files(['wa.microsoft.graph.nodes.OSW.geojson', 'wa.microsoft.graph.edges.OSW.geojson'])
+        self.create_files(['wa.microsoft.graph.nodes.geojson', 'wa.microsoft.graph.edges.geojson'])
         self.assertTrue(validator.is_valid())
         self.assertEqual(len(validator.files), 2)
 
@@ -81,18 +86,26 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertTrue(validator.is_valid())
         self.assertEqual(len(validator.files), 2)
 
-    def test_valid_bare_legacy_osw_dataset_filenames(self):
+    def test_legacy_osw_dataset_filenames_are_rejected(self):
         validator = ExtractedDataValidator(self.test_dir)
-        self.create_files(['nodes.OSW.geojson', 'edges.OSW.geojson'])
-        self.assertTrue(validator.is_valid())
-        self.assertEqual(len(validator.files), 2)
+        self.create_files(['b.graph.nodes.OSW.geojson', 'b.graph.edges.OSW.geojson'])
+        self.assertFalse(validator.is_valid())
+        self.assertEqual(
+            validator.error,
+            'Unsupported .geojson files present: '
+            'b.graph.edges.OSW.geojson, b.graph.nodes.OSW.geojson. '
+            + ALLOWED_NAMES_MESSAGE
+        )
 
-    def test_supported_legacy_filename_formats_for_all_dataset_keys(self):
+    def test_supported_filename_formats_for_all_dataset_keys(self):
         for dataset_key in ('edges', 'nodes', 'points', 'lines', 'zones', 'polygons'):
             self.assertEqual(dataset_key_for_filename(f'{dataset_key}.geojson'), dataset_key)
             self.assertEqual(dataset_key_for_filename(f'city.{dataset_key}.geojson'), dataset_key)
-            self.assertEqual(dataset_key_for_filename(f'{dataset_key}.OSW.geojson'), dataset_key)
-            self.assertEqual(dataset_key_for_filename(f'city.{dataset_key}.OSW.geojson'), dataset_key)
+
+    def test_legacy_osw_filename_formats_are_not_recognized(self):
+        for dataset_key in ('edges', 'nodes', 'points', 'lines', 'zones', 'polygons'):
+            self.assertIsNone(dataset_key_for_filename(f'{dataset_key}.OSW.geojson'))
+            self.assertIsNone(dataset_key_for_filename(f'city.{dataset_key}.OSW.geojson'))
 
     def test_ambiguous_dataset_name_substrings_are_not_supported(self):
         self.assertIsNone(dataset_key_for_filename('roadnodes.geojson'))
@@ -137,10 +150,7 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: something_else.geojson. '
-            'Allowed file names are {edges, nodes, points, lines, zones, polygons}.geojson, '
-            '*.{edges, nodes, points, lines, zones, polygons}.geojson, '
-            '{edges, nodes, points, lines, zones, polygons}.OSW.geojson, or '
-            '*.{edges, nodes, points, lines, zones, polygons}.OSW.geojson'
+            + ALLOWED_NAMES_MESSAGE
         )
 
     def test_glued_dataset_names_are_rejected(self):
@@ -150,10 +160,7 @@ class TestExtractedDataValidator(unittest.TestCase):
         self.assertEqual(
             validator.error,
             'Unsupported .geojson files present: roadedges.geojson, roadnodes.geojson. '
-            'Allowed file names are {edges, nodes, points, lines, zones, polygons}.geojson, '
-            '*.{edges, nodes, points, lines, zones, polygons}.geojson, '
-            '{edges, nodes, points, lines, zones, polygons}.OSW.geojson, or '
-            '*.{edges, nodes, points, lines, zones, polygons}.OSW.geojson'
+            + ALLOWED_NAMES_MESSAGE
         )
 
 
