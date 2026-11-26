@@ -441,6 +441,31 @@ class TestOSWValidation(unittest.TestCase):
         self.assertEqual(mismatch_issue['filename'], 'opensidewalks.zones.geojson')
         self.assertIsNotNone(mismatch_issue['feature_index'])
 
+    def test_legacy_osw_filenames_are_rejected_end_to_end(self):
+        """A dataset using the deprecated *.<dataset>.OSW.geojson names fails validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_zip = os.path.join(tmpdir, 'legacy_names.zip')
+            with zipfile.ZipFile(self.minimal_zipfile) as src, \
+                    zipfile.ZipFile(legacy_zip, 'w', zipfile.ZIP_DEFLATED) as dst:
+                for name in src.namelist():
+                    legacy_name = name
+                    if name.endswith('.geojson'):
+                        legacy_name = name[:-len('.geojson')] + '.OSW.geojson'
+                    dst.writestr(legacy_name, src.read(name))
+
+            validation = OSWValidation(zipfile_path=legacy_zip, config=LENIENT_PRECISION)
+            result = validation.validate()
+
+            self.assertFalse(result.is_valid)
+            self.assertTrue(
+                any('Unsupported .geojson files present' in e for e in (result.errors or [])),
+                f'Expected unsupported filename error; got: {result.errors}',
+            )
+            self.assertTrue(
+                any('.OSW.geojson' in e for e in (result.errors or [])),
+                f'Expected the legacy file names to be listed; got: {result.errors}',
+            )
+
     def test_jsonschema_rs_pin_is_0_33_0(self):
         requirements_path = os.path.join(SRC_DIR, 'requirements.txt')
         setup_path = os.path.join(SRC_DIR, 'setup.py')

@@ -464,9 +464,7 @@ class OSWValidation:
         for key in self.dataset_schema_paths:
             if (
                     basename == f"{key}.geojson"
-                    or basename == f"{key}.osw.geojson"
                     or basename.endswith(f".{key}.geojson")
-                    or basename.endswith(f".{key}.osw.geojson")
             ):
                 return key
 
